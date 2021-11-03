@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, Tuple
 import Chess.constants as cons
 from Chess.exceptions import InvalidFormat, InvalidVector
 
@@ -34,9 +34,6 @@ class Vec:
         return self._j
 
 
-
-
-
 class Position:
     """
 	Wrapper for the positions on a chess board.
@@ -63,7 +60,6 @@ class Position:
                                 tuple or list.
         :rtype: None
         """
-        
         if isinstance(pos, str):
             self._from_algebraic(pos)
         elif isinstance(pos, tuple):
@@ -89,8 +85,8 @@ class Position:
         self._i = rank
         self._j = file
 
-    def _from_grid(self, pos):
-        # Very simple here
+    def _from_grid(self, pos: Tuple[int, int]):
+        """Load in rows and columns from a tuple"""
         self._i = pos[0]
         self._j = pos[1]
 
@@ -120,7 +116,6 @@ class Position:
     def __sub__(self, o: Vec):
         """Support subtraction by a vector Vec"""
         return Position((self._i - o.i, self._j - o.j))
-    
 
     @property
     def algebraic(self) -> str:
