@@ -1,25 +1,39 @@
 from typing import ClassVar
 import Chess.constants as cons
-from Chess.exceptions import InvalidFormat
+from Chess.exceptions import InvalidFormat, InvalidVector
 
 
 class Vec:
-    def __init__(self, x: int, y: int) -> None:
-        assert x in range(-8, 9)
-        assert y in range(-8, 9)
+    VALID_RANGE = range(-8, 9)
 
-        self.x = x
-        self.y = y
+    def __init__(self, i: int, j: int) -> None:
+        if i not in self.VALID_RANGE: raise InvalidVector
+        if j not in self.VALID_RANGE: raise InvalidVector
+
+        self._i: int = i
+        self._j: int = j
+
+    def __eq__(self, o) -> bool:
+        return self._i == o.i and self._j == o.j
+
+    def __ne__(self, o) -> bool:
+        return self._i != o.i and self._j != o.j
+
+    def __add__(self, o):
+        return Vec(self._i + o.i, self._j + o.j)
+
+    def __sub__(self, o):
+        return Vec(self._i - o.i, self._j - o.j)
 
     @property
-    def x(self) -> int:
-        return self.x
+    def i(self) -> int:
+        return self._i
 
     @property
-    def y(self) -> int:
-        return self.y
+    def j(self) -> int:
+        return self._j
 
-    
+
 
 
 
@@ -28,63 +42,98 @@ class Position:
 	Wrapper for the positions on a chess board.
 	Can convert to/from algebraic ("A1", "B2"..."H8") notation.
 
-	:param rank: 			0-7
-	:param file: 			A-H|0-7
-	:attr coord: 			[0-7, 0-7]
-	:attr algebraic: 		"[A-H][0-7]"
+    :param pos str|tuple: Either a string representing
+                            algebraic notation, or a set
+                            of i and j coordinates as a
+                            tuple or list.
+	:attr coord: [0-7, 0-7]
+	:attr algebraic: "[A-H][0-7]"
+
+    rank and file are internally represented as `i` and `j` to avoid some confusion,
+    relating them to matrix notation feels more familiar.
+    - consider implementing __slots__
     """
-    def __init__(self, rank: int, file) -> None:
-        if isinstance(file, str) and isinstance(rank, int):
-            # Check if we are being supplied algebraic notation
-            self.rank = rank - 1
-            try:
-                self.file = cons.REV_FILES[file]
-            except KeyError:
-                raise InvalidFormat
-        elif isinstance(file, int) and isinstance(rank, int):
-            # Else update the coordinates to Cartesian
-            self.rank = rank
-            self.file = file
-        else:
+    def __init__(self, pos) -> None:
+        """__init__.
+
+        :param self:
+        :param pos str|tuple: Either a string representing
+                                algebraic notation, or a set
+                                of i and j coordinates as a
+                                tuple or list.
+        :rtype: None
+        """
+        
+        if isinstance(pos, str):
+            self._from_algebraic(pos)
+        elif isinstance(pos, tuple):
+            self._from_grid(pos)
+
+        self._validate_position()
+
+    def _from_algebraic(self, pos):
+        if len(pos) != 2: raise InvalidFormat
+        file = pos[0]
+        # convert rank to numeric
+        try:
+            rank = int(pos[1])
+        except ValueError:
+            raise InvalidFormat
+        rank -= 1
+        # convert file to numeric
+        try:
+            file = cons.REV_FILES[file]
+        except KeyError:
             raise InvalidFormat
 
-        # Validate that the position is in the bord bounds.
-        try:
-            assert self.rank in cons.CART_COORD
-            assert self.file in cons.CART_COORD
-        except AssertionError:
-            raise InvalidFormat
+        self._i = rank
+        self._j = file
+
+    def _from_grid(self, pos):
+        # Very simple here
+        self._i = pos[0]
+        self._j = pos[1]
+
+    def _validate_position(self):
+        """Validate that the current position is on the board"""
+        if self._i not in cons.CART_COORD: raise InvalidFormat
+        if self._j not in cons.CART_COORD: raise InvalidFormat
 
     def __repr__(self) -> str:
         """Reproduce the vector in algebraic notation"""
         return self.algebraic
 
-    def __eq__(self, o: Position) -> bool:
+    def __eq__(self, o) -> bool:
+        """Support testing equality between two instances of this class"""
         assert isinstance(o, Position)
-        return self.cartesian == o.cartesian
+        return self.algebraic == o.algebraic
 
-    def __ne__(self, o: Position) -> bool:
+    def __ne__(self, o) -> bool:
+        """Support testing equality between two instances of this class"""
         assert isinstance(o, Position)
-        return self.cartesian != o.cartesian
+        return self.algebraic != o.algebraic
     
-    def __add__(self, o: Motion) -> Position:
-        pass
+    def __add__(self, o: Vec):
+        """Support addition by a vector Vec"""
+        return Position((self._i + o.i, self._j + o.j))
 
+    def __sub__(self, o: Vec):
+        """Support subtraction by a vector Vec"""
+        return Position((self._i - o.i, self._j - o.j))
+    
 
     @property
     def algebraic(self) -> str:
-        rank = str(self.rank + 1)
-        file = cons.FILES[self.file]
-        return file + rank 
-
-    @property
-    def cartesian(self) -> (int, int):  # type: ignore
-        """cartesian.
+        """algebraic.
 
         :param self:
-        :rtype: (int, int)
+        :rtype: str
         """
-        return self.rank, self.file  # type: ignore
+        return cons.FILES[self._j] + str(self._i + 1)
+
+    @property
+    def grid(self) -> (int, int):  # type: ignore
+        return self._i, self._j # type: ignore
 
         
 

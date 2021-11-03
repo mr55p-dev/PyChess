@@ -1,5 +1,5 @@
-from Chess.coordinate import Position
-from Chess.exceptions import InvalidFormat
+from Chess.coordinate import Position, Vec
+from Chess.exceptions import InvalidFormat, InvalidVector
 from Chess.constants import CART_COORD
 import pytest
 from itertools import product
@@ -12,7 +12,7 @@ ALL_CART_COORD = list(product(CART_COORD, CART_COORD))
                          (8, "A"),
                          (8, "H")])
 def test_pos_init_algebraic(rank, file):
-    Position(rank=rank, file=file)
+    Position(f"{file}{rank}")
 
 @pytest.mark.parametrize("rank,file",
                          [(1, "a"),
@@ -25,11 +25,11 @@ def test_pos_init_algebraic(rank, file):
                           (1, "I")])
 def test_pos_init_algebraic_fail(rank, file):
     with pytest.raises(InvalidFormat):
-        Position(rank=rank, file=file)
+        Position(f"{file}{rank}")
 
 @pytest.mark.parametrize("rank,file", ALL_CART_COORD)
 def test_pos_init_cart(rank, file):
-    Position(rank=rank, file=file)
+        Position((rank, file))
 
 @pytest.mark.parametrize("rank,file",
                          [(-1, 2),
@@ -42,7 +42,7 @@ def test_pos_init_cart(rank, file):
                           (None, 2)])
 def test_pos_init_cart_fail(rank, file):
     with pytest.raises(InvalidFormat):
-        Position(rank=rank, file=file)
+        Position((rank, file))
 
 @pytest.mark.parametrize("rank,file",
                         [(1, "A"),
@@ -50,13 +50,48 @@ def test_pos_init_cart_fail(rank, file):
                          (8, "A"),
                          (8, "H")])
 def test_pos_algebraic(rank, file):
-    v = Position(rank, file)
+    v = Position(f"{file}{rank}")
     assert v.algebraic == file + str(rank)
 
 @pytest.mark.parametrize("rank, file", ALL_CART_COORD)
 def test_pos_cart(rank, file):
-    v = Position(rank, file)
-    assert v.cartesian == (rank, file)
+    v = Position((rank, file))
+    assert v.grid == (rank, file)
 
-            
 
+@pytest.mark.parametrize("rank, file", ALL_CART_COORD)
+def test_pos_equality(rank, file):
+    position1 = Position((rank, file))
+    position2 = Position((rank, file))
+    assert position1 == position2
+
+@pytest.mark.parametrize("rank, file", ALL_CART_COORD[1:])
+def test_pos_inequality(rank, file):
+    position1 = Position((0,0))
+    position2 = Position((rank, file))
+    assert position2 != position1
+
+    
+valid_vec = [(-1,-1), (0, 0), (1, 1), (0, 1), (-1, 0)]
+valid_pos = [(4, 4)]
+
+@pytest.mark.parametrize("board,vec", product(valid_pos, valid_vec))
+def test_pos_vec_add_valid(board, vec):
+    init_pos = Position(board)
+    step_vec = Vec(vec[0], vec[1])
+
+    new_i = board[0] + vec[0]
+    new_j = board[1] + vec[1]
+    new_pos = Position((new_i, new_j))
+    assert new_pos == init_pos + step_vec
+
+
+invalid_vec = [(-1,1), (-1, 2), (1, 1)]
+invalid_pos = [(0, 7)]
+
+@pytest.mark.parametrize("board,vec", product(invalid_pos, invalid_vec))
+def test_pos_vec_add_invalid(board, vec):
+    init_pos = Position(board)
+    step_vec = Vec(vec[0], vec[1])
+    with pytest.raises(InvalidFormat):
+        final_pos = init_pos + step_vec

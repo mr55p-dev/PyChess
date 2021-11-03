@@ -3,3 +3,6 @@ class InvalidCoordinate(ValueError):
 
 class InvalidFormat(ValueError):
     pass
+
+class InvalidVector(ValueError):
+    pass
