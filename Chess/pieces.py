@@ -21,7 +21,7 @@ class Piece:
     
     def __init__(
             self,
-            colour: WHITE|BLACK,
+            colour: int,
             position: Position,
             kind: str
         ) -> None:
@@ -54,24 +54,31 @@ class Piece:
 
 
 class King(Piece):
-    pass
+    def __init__(self, colour: int, position: Position) -> None:
+        super().__init__(colour, position, kind="K")
 
 
 class Queen(Piece):
-    pass
+    def __init__(self, colour: int, position: Position) -> None:
+        super().__init__(colour, position, kind="Q")
 
 
 class Rook(Piece):
-    pass
+    def __init__(self, colour: int, position: Position) -> None:
+        super().__init__(colour, position, kind="R")
 
 
 class Bishop(Piece):
+    def __init__(self, colour: int, position: Position) -> None:
+        super().__init__(colour, position, kind="B")
     pass
 
 
 class Knight(Piece):
-    pass
+    def __init__(self, colour: int, position: Position) -> None:
+        super().__init__(colour, position, kind="N")
 
 
 class Pawn(Piece):
-    pass
+    def __init__(self, colour: int, position: Position) -> None:
+        super().__init__(colour, position, kind="P")
