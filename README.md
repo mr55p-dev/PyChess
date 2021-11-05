@@ -108,4 +108,8 @@ func evaluate_board
 
 ```
 
+												     -> view controller 
+Pieces -> board: {position: piece} -> Game [board]   -> process
+items 	  state						  stack of states   can parse and manipulate a game
+
 [See here for a guide to writing markdown.](https://guides.github.com/features/mastering-markdown/)

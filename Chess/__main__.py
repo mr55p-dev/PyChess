@@ -1,12 +1,13 @@
+from Chess.helpers import new_game
 from .coordinate import *
 from .state import *
 from .pieces import Piece, King, Queen, Rook, Knight, Bishop, Pawn
+from .constants import WHITE, BLACK
+
 
 
 if __name__ == "__main__":
     # A new game loop
-    white_pieces = [
-        King(
     #crent_state = board setup
     # while state is not (checkmate or resigned):
     #     if current_state.is_check?
@@ -20,4 +21,5 @@ if __name__ == "__main__":
     #     history.append(current_state)
     #     new_state = current_state.next(move) # make a new position collection
     #     turn ++
-pass
+
+    pass

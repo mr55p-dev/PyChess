@@ -1,4 +1,4 @@
-from typing import ClassVar, Tuple
+from typing import ClassVar, Tuple, Union
 import Chess.constants as cons
 from Chess.exceptions import InvalidFormat, InvalidVector
 
@@ -50,7 +50,7 @@ class Position:
     relating them to matrix notation feels more familiar.
     - consider implementing __slots__
     """
-    def __init__(self, pos) -> None:
+    def __init__(self, pos: Union[Tuple[int, int], str]) -> None:
         """__init__.
 
         :param self:
@@ -117,10 +117,15 @@ class Position:
         """Support subtraction by a vector Vec"""
         return Position((self._i - o.i, self._j - o.j))
 
+    def __hash__(self) -> int:
+        """Generate a hash of the position
+        allows positions to be the key of the _loc_map dict in 
+        `Game`"""
+        return 10*self._i + self._j
+
     @property
     def algebraic(self) -> str:
         """algebraic.
-
         :param self:
         :rtype: str
         """
@@ -131,4 +136,12 @@ class Position:
         return self._i, self._j # type: ignore
 
         
+    @property
+    def i(self) -> int:
+        return self._i
+
+    @property
+    def j(self) -> int:
+        return self._j
+
 

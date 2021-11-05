@@ -25,3 +25,5 @@ REV_FILES = {
     "G": 6,
     "H": 7
 }
+
+PIECE_TYPES = ["K", "Q", "R", "N", "B", "P"]

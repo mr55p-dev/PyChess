@@ -6,3 +6,6 @@ class InvalidFormat(ValueError):
 
 class InvalidVector(ValueError):
     pass
+
+class InvalidPiece(ValueError):
+    pass
