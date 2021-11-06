@@ -1,9 +1,5 @@
-from Chess.helpers import new_game
-from .coordinate import *
-from .state import *
-from .pieces import Piece, King, Queen, Rook, Knight, Bishop, Pawn
-from .constants import WHITE, BLACK
-
+from Chess.state import Board
+from Chess.view import view_board
 
 
 if __name__ == "__main__":
@@ -22,4 +18,7 @@ if __name__ == "__main__":
     #     new_state = current_state.next(move) # make a new position collection
     #     turn ++
 
+    test_board = Board()
+    view_board(test_board)
+    
     pass
