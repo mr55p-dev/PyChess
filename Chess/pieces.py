@@ -1,7 +1,7 @@
 from itertools import product
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
 from Chess.coordinate import Position, Vec
-from Chess.exceptions import InvalidPiece
+from Chess.exceptions import InvalidPiece, InvalidStartingPosition
 
 class Piece:
     """
@@ -26,16 +26,19 @@ class Piece:
             colour: int,
             position: Position,
             kind: str,
+            max_distance: int = 7,
             is_active: bool = True
         ) -> None:
         if colour not in [WHITE, BLACK]: raise InvalidPiece("Not a valid colour")
         if kind not in PIECE_TYPES: raise InvalidPiece("Not a valid type")
+        if max_distance not in range(1, 8): raise InvalidPiece("max_distance must be between 0, 8")
         if not isinstance(is_active, bool): raise InvalidPiece("is_active must be bool")
 
         self._colour = colour
         self._position = position
         self._kind = kind
         self._is_active = is_active
+        self._max_distance = max_distance
 
     def __repr__(self) -> str:
         return self._kind
@@ -64,6 +67,11 @@ class Piece:
         assert isinstance(state, bool)
         self._is_active = state
 
+    @property
+    def distance(self) -> int:
+        """The maximum distance a piece can move"""
+        return self._max_distance
+
     def capture(self) -> None:
         """Mark the piece as captured"""
         self._is_active = False
@@ -73,10 +81,6 @@ class Piece:
         """A list of the directions that the piece can move in."""
         pass
 
-    @staticmethod
-    def max_distance():
-        """The maximum distance a piece can move"""
-        pass
 
     @staticmethod
     def special_moves():
@@ -86,7 +90,7 @@ class Piece:
 
 class King(Piece):
     def __init__(self, colour: int, position: Position) -> None:
-        super().__init__(colour, position, kind="K")
+        super().__init__(colour, position, kind="K", max_distance=1)
 
     @property
     def projections(self):
@@ -101,7 +105,6 @@ class King(Piece):
             Vec(-1, 0),
             Vec(-1, -1)
         ]
-
 
 
 class Queen(Piece):
@@ -152,7 +155,7 @@ class Bishop(Piece):
 
 class Knight(Piece):
     def __init__(self, colour: int, position: Position) -> None:
-        super().__init__(colour, position, kind="N")
+        super().__init__(colour, position, kind="N", max_distance=1)
 
     @property
     def projections(self):
@@ -164,13 +167,13 @@ class Knight(Piece):
             Vec(2, -1),
             Vec(-1, 2),
             Vec(-1, -2),
-            Vec(2, 1),
-            Vec(2, -1),
+            Vec(-2, 1),
+            Vec(-2, -1),
         ]
 
 class Pawn(Piece):
     def __init__(self, colour: int, position: Position) -> None:
-        super().__init__(colour, position, kind="P")
+        super().__init__(colour, position, kind="P", max_distance=1)
 
     @property
     def projections(self):

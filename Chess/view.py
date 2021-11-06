@@ -20,7 +20,6 @@ class bcolors:
     BLACK_PIECE = '\033[38;5;255;48;5;0m' # Black text = [35;5;0; white bg = 48;5;255m
 
 
-
 def view_board(board: Board):
     """Simple fuction to view a game state"""
     representation = [[" " for _ in range(8)] for _ in range(8)]

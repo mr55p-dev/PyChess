@@ -9,3 +9,6 @@ class InvalidVector(ValueError):
 
 class InvalidPiece(ValueError):
     pass
+
+class InvalidStartingPosition(ValueError):
+    pass

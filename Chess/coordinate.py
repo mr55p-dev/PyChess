@@ -13,6 +13,9 @@ class Vec:
         self._i: int = i
         self._j: int = j
 
+    def __repr__(self) -> str:
+        return str((self._i, self._j))
+
     def __eq__(self, o) -> bool:
         return self._i == o.i and self._j == o.j
 
@@ -24,6 +27,9 @@ class Vec:
 
     def __sub__(self, o):
         return Vec(self._i - o.i, self._j - o.j)
+
+    def __mul__(self, scalar):
+        return Vec(self._i * scalar, self._j * scalar)
 
     @property
     def i(self) -> int:

@@ -1,5 +1,7 @@
 from Chess.state import Board
 from Chess.view import view_board
+from Chess.coordinate import Vec, Position
+from Chess.constants import BLACK, WHITE
 
 
 if __name__ == "__main__":

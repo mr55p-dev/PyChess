@@ -1,4 +1,5 @@
 import pytest
+from itertools import product
 from Chess.coordinate import Vec
 from Chess.exceptions import InvalidVector
 
@@ -46,3 +47,13 @@ def test_vec_add_1():
 def test_vec_sub_1():
     assert Vec(1, 1) - Vec(2, 1) == Vec(-1, 0)
 
+
+vec = [(0, 0), (1, 0), (-1, 1), (2, 0)]
+scalar = [1, 2, 3, -1, -2]
+
+@pytest.mark.parametrize("vec,scalar", product(vec, scalar))
+def test_vec_mul(vec, scalar):
+    vec_product = Vec(*vec) * scalar
+    i_component = scalar * vec[0]
+    j_component = scalar * vec[1]
+    assert vec_product == Vec(i_component, j_component)
