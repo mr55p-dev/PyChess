@@ -1,6 +1,6 @@
 from typing import Tuple, List, Optional
 from Chess.constants import BLACK, RANKS, WHITE
-from Chess.pieces import Piece
+from Chess.pieces import King, Piece
 from Chess.coordinate import Position
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
@@ -50,10 +50,16 @@ class Board():
         self._white, self._black = starting_position
         self._turn = turn
         self._update_map()
+
         self._to_move = to_move
+        self._moved = WHITE if to_move == BLACK else WHITE
+        self._moving_pieces = self._white if to_move == WHITE else self._black
+        self._moved_pieces = self._black if to_move == WHITE else self._black
+
         self._is_check = self._evaluate_check()
         self._is_mate = self._evaluate_mate()
         self._evaluation = self._evaluate_score()
+
         self.other_FEN_params = other_fen_params
 
     def __repr__(self) -> str:
@@ -73,17 +79,17 @@ class Board():
         Might be able to bring it inside __init__ since state should
         only update through creating a new instance based on a Move
         object."""
-        # self._loc_map = {}
-        # for piece in self._white + self._black:
-        #     self._loc_map[piece.position] = piece
         self._loc_map = { piece.position: piece for piece in self._white + self._black }
 
-    def _find_all_moves(self):
+    def _find_all_moves(self, previous=False):
         """_find_all_moves."""
-        moving_pieces = self._white if self._to_move == WHITE else self._black
         passive = {}
         captures = {}
-        for piece in moving_pieces:
+        if previous:
+            moving = self._moved_pieces
+        else:
+            moving = self._moving_pieces
+        for piece in moving:
             capturing_moves, passive_moves = self._find_piece_moves(piece)
             captures[piece] = capturing_moves
             passive[piece] = passive_moves
@@ -122,20 +128,31 @@ class Board():
                     break
 
                 if (allowed:=self._allowed_move(landed_on, piece)) == self.EMPTY:
-                    print(f"Allowed move at {landed_on}")
                     passive.append(landed_on)
                 elif allowed == self.CAPTURE:
                     # Add the possible capture to the captures map
                     captures.append(landed_on)
-                    print(f"Capture at {landed_on}")
                     break
                 elif allowed == self.BLOCKED:
                     break
         return captures, passive
 
+    def _get_king(self):
+        """Returns the king of the side *not* moving on this turn"""
+        king_w, king_b = tuple([i for i in self.pieces if isinstance(i, King)])
+        if self._moved == BLACK:
+            return king_b
+        else:
+            return king_w
+
     def _evaluate_check(self):
         """_evaluate_check."""
-        pass
+        king = self._get_king()
+        _, attacks = self._find_all_moves(self._moved)
+        if king in attacks:
+            return True
+        else:
+            return False
 
     def _evaluate_mate(self):
         """_evaluate_mate."""
@@ -158,6 +175,10 @@ class Board():
     @property
     def pieces(self) -> list:
         return self._black + self._white
+
+    @property
+    def is_check(self) -> bool:
+        return self._is_check
     
     @property
     def to_move(self):
