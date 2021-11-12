@@ -8,14 +8,16 @@ from Chess.view import view_board
 if __name__ == "__main__":
     # Old checking.
     fen = input("FEN string >>> ")
-    pieces, to_move = pieces_from_fen(fen)
-    board = Board(pieces, to_move)
+    params = pieces_from_fen(fen)
+    pieces, to_move, _, _, _, turn = pieces_from_fen(fen)
+    board = Board(pieces, turn, to_move, params[2:5])
     while True:
         view_board(board)
         t = input("Enter a square to see positions: ")
         visualise = Position(t)
         vp = board.map[visualise]
         view_board(board, show_moves=vp)
+        print(f"FEN: {board.to_fen()}")
         input()
 
 

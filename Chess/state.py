@@ -1,5 +1,5 @@
 from typing import Tuple, List, Optional
-from Chess.constants import WHITE
+from Chess.constants import BLACK, RANKS, WHITE
 from Chess.pieces import Piece
 from Chess.coordinate import Position
 from Chess.exceptions import InvalidFormat
@@ -37,7 +37,9 @@ class Board():
     gametype = Tuple[List[Optional[Piece]], List[Optional[Piece]]]
     def __init__(self,
                  starting_position: gametype=new_game(),
-                 to_move: int = WHITE) -> None:
+                 turn: int = 0,
+                 to_move: int = WHITE,
+                 other_fen_params = []) -> None:
         """__init__.
 
         :param starting_position:
@@ -46,11 +48,13 @@ class Board():
         :rtype: None
         """
         self._white, self._black = starting_position
+        self._turn = turn
         self._update_map()
         self._to_move = to_move
         self._is_check = self._evaluate_check()
         self._is_mate = self._evaluate_mate()
         self._evaluation = self._evaluate_score()
+        self.other_FEN_params = other_fen_params
 
     def __repr__(self) -> str:
         """__repr__.
@@ -141,18 +145,69 @@ class Board():
         """_evaluate_score."""
         pass
 
+    @property 
+    def turn(self) -> int:
+        return self._turn
+
     @property
     def map(self) -> dict:
         """Convenience attribute
         Returns a hash map of each occupied position and its associated piece"""
         return self._loc_map
+
+    @property
+    def pieces(self) -> list:
+        return self._black + self._white
     
     @property
     def to_move(self):
         """to_move."""
         return self._to_move
 
+    def to_fen(self):
+        fields = []
+        ranks = [["" for i in range(8)] for _ in range(8)]
+        # The rank of a piece will be calculated as 7 - i; 
+        # In FEN the 8th rank (list index 7) is at i=0
+        for position, piece in self.map.items():
+            symbol = piece.kind
+            if piece.colour == BLACK: symbol = symbol.lower()
+            ranks[7-position.i][position.j] = symbol
+        # Reduce the ranks down to proper notation
+        # Hacky but itll do
+        irreducable_ranks = []
+        for rank in ranks:
+            new_rank = []
+            counter = 0
+            for iter, char in enumerate(rank):
+                if not char:
+                    counter += 1
+                if char and counter:
+                    new_rank.append(str(counter))
+                    counter = 0
+                elif iter == 7 and counter > 0:
+                    new_rank.append(str(counter))
+                    continue
+                new_rank.append(char)
+            irreducable_ranks.append("".join(new_rank))
+        
+        fields.append("/".join(irreducable_ranks))
+        
+        next_move = "w" if self._to_move == WHITE else 'b'
+        fields.append(next_move)
+        
+        # Since i am not ready to finish FEN we will add default data to the end
+        other_p = [str(i) for i in self.other_FEN_params]
+        fields.append(other_p[0])
+        fields.append(other_p[1])
+        fields.append(other_p[2])
+        # fields.append("KQkq")
+        # fields.append("-")
+        # fields.append("0")
+        fields.append(self._turn)
+        return " ".join(fields)
 
+            
 class Game():
     """
 	1. Initialise a new game based on the starting board

@@ -104,5 +104,5 @@ def pieces_from_fen(fen_string: str):
     # Number of moves
     n_moves = fields[5]
 
-    return [(white_pieces, black_pieces), next_turn]
+    return [(white_pieces, black_pieces), next_turn, castle, en_passant, half_moves, n_moves]
 
