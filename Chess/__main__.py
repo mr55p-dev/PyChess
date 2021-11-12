@@ -1,8 +1,6 @@
-from Chess.state import Board
-from Chess.view import view_board
-from Chess.coordinate import Vec, Position
-from Chess.constants import BLACK, WHITE
-
+from Chess.state import Board  # type: ignore
+from Chess.view import view_board  # type: ignore
+from Chess.coordinate import Vec # type: ignore
 
 if __name__ == "__main__":
     # A new game loop

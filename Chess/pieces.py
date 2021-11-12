@@ -178,7 +178,7 @@ class Pawn(Piece):
     @property
     def projections(self):
         """The directions this piece can move in"""
-        if self._kind == WHITE:
+        if self._colour == WHITE:
             return [
                 Vec(1, 0),
                 Vec(2, 0),

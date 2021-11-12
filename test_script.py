@@ -1,14 +1,21 @@
-from Chess.constants import BLACK
-from Chess.pieces import Pawn
+from Chess.constants import BLACK, PIECE_TYPES, WHITE
+from Chess.helpers import pieces_from_fen
+from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook 
 from Chess.state import Board
 from Chess.coordinate import Position, Vec
 from Chess.view import view_board
 
 if __name__ == "__main__":
-    board = Board()
-    board._black.append(Pawn(BLACK, Position("A3")))
-    board._update_map()
-    view_board(board)
-    queens_knight = board.map[Position("B1")]
-    moves = board._find_piece_moves(queens_knight)
-    print(moves)
+    # Old checking.
+    fen = input("FEN string >>> ")
+    pieces, to_move = pieces_from_fen(fen)
+    board = Board(pieces, to_move)
+    while True:
+        view_board(board)
+        t = input("Enter a square to see positions: ")
+        visualise = Position(t)
+        vp = board.map[visualise]
+        view_board(board, show_moves=vp)
+        input()
+
+

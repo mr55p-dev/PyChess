@@ -1,7 +1,8 @@
-from typing import Tuple
+from typing import Tuple, List, Optional
 from Chess.constants import WHITE
+from Chess.pieces import Piece
 from Chess.coordinate import Position
-from Chess.exceptions import InvalidFormat, InvalidStartingPosition
+from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
 
 class Board():
@@ -29,11 +30,21 @@ class Board():
 	:method best_move: 		ChessMove
 							The best continuting move (based on pieces which can be captured).
 
- r   """
+    """
     BLOCKED  = 0
     CAPTURE = 1
     EMPTY    = 2
-    def __init__(self, starting_position=new_game(), to_move: int = WHITE) -> None:
+    gametype = Tuple[List[Optional[Piece]], List[Optional[Piece]]]
+    def __init__(self,
+                 starting_position: gametype=new_game(),
+                 to_move: int = WHITE) -> None:
+        """__init__.
+
+        :param starting_position:
+        :param to_move:
+        :type to_move: int
+        :rtype: None
+        """
         self._white, self._black = starting_position
         self._update_map()
         self._to_move = to_move
@@ -42,6 +53,10 @@ class Board():
         self._evaluation = self._evaluate_score()
 
     def __repr__(self) -> str:
+        """__repr__.
+
+        :rtype: str
+        """
         # Maybe write a board class which is accessable on rows and columns for ease.
         board = [[" " for _ in range(8)] for _ in range(8)]
         for loc, piece in self._loc_map.items():
@@ -60,6 +75,7 @@ class Board():
         self._loc_map = { piece.position: piece for piece in self._white + self._black }
 
     def _find_all_moves(self):
+        """_find_all_moves."""
         moving_pieces = self._white if self._to_move == WHITE else self._black
         passive = {}
         captures = {}
@@ -114,12 +130,15 @@ class Board():
         return captures, passive
 
     def _evaluate_check(self):
+        """_evaluate_check."""
         pass
 
     def _evaluate_mate(self):
+        """_evaluate_mate."""
         pass
 
     def _evaluate_score(self):
+        """_evaluate_score."""
         pass
 
     @property
@@ -130,6 +149,7 @@ class Board():
     
     @property
     def to_move(self):
+        """to_move."""
         return self._to_move
 
 

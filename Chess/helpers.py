@@ -1,6 +1,6 @@
 from Chess.coordinate import Position
 from Chess.pieces import King, Queen, Rook, Knight, Bishop, Pawn
-from Chess.constants import WHITE, BLACK
+from Chess.constants import PIECE_TYPES, WHITE, BLACK
 
 def new_game():
     # Change to FEN strings at some point
@@ -44,4 +44,65 @@ def new_game():
     ]
 
     return (white_pieces, black_pieces)
+
+def create_piece(kind, colour, index):
+    position = Position(index)
+    if kind == "K":
+        return King(colour=colour, position=position)
+    elif kind == "Q":
+        return Queen(colour=colour, position=position)
+    elif kind == "R":
+        return Rook(colour=colour, position=position)
+    elif kind == "N":
+        return Knight(colour=colour, position=position)
+    elif kind == "B":
+        return Bishop(colour=colour, position=position)
+    elif kind == "P":
+        return Pawn(colour=colour, position=position)
+
+def pieces_from_fen(fen_string: str):
+    fields = fen_string.split(' ')
+    if len(fields) != 6: raise ValueError("A FEN string must be space delimited with 6 arguments")
+    
+    placement = fields[0]
+    ranks = placement.split("/")
+    # The ranks are given in reverse order, so index 0
+    # of this corresponds to i=7, or the 8th rank.
+    white_pieces = []
+    black_pieces = []
+    for rank, squares in enumerate(ranks):
+        i = 7 - rank
+        # Split the rank into its characters, 
+        encoding = list(squares)
+        j = 0
+        for char in encoding:
+            if char.isdigit():
+                j += int(char)
+                continue
+            elif char in PIECE_TYPES:
+                white_pieces.append(create_piece(char, WHITE, (i, j)))
+            else:
+                black_pieces.append(create_piece(char.upper(), BLACK, (i, j)))
+            
+            if j < 8:
+                j += 1
+            else:
+                break
+
+    # Decode the next turn
+    next_turn = WHITE if fields[1] == 'w' else BLACK
+
+    # Castling information
+    castle = fields[2]
+
+    # Valid enpassant moves
+    en_passant = fields[3]
+
+    # Halfmove clock 2 x moves since last pawn move or capture
+    half_moves = fields[4]
+
+    # Number of moves
+    n_moves = fields[5]
+
+    return [(white_pieces, black_pieces), next_turn]
 
