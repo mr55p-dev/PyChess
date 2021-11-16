@@ -1,4 +1,5 @@
-from typing import Tuple, List, Optional
+from itertools import chain, repeat
+from typing import Dict, Tuple, List, Optional
 from Chess.constants import BLACK, RANKS, WHITE
 from Chess.pieces import King, Piece
 from Chess.coordinate import Position
@@ -52,15 +53,16 @@ class Board():
         self._update_map()
 
         self._to_move = to_move
-        self._moved = WHITE if to_move == BLACK else WHITE
-        self._moving_pieces = self._white if to_move == WHITE else self._black
-        self._moved_pieces = self._black if to_move == WHITE else self._black
+        self._opposition = WHITE if to_move == BLACK else BLACK
 
         self._is_check = self._evaluate_check()
         self._is_mate = self._evaluate_mate()
         self._evaluation = self._evaluate_score()
 
+
+
         self.other_FEN_params = other_fen_params
+
 
     def __repr__(self) -> str:
         """__repr__.
@@ -73,33 +75,39 @@ class Board():
             board[loc.i][ loc.j] = piece.kind
         return "\n".join([" ".join([cell for cell in row]) for row in board])
 
+    def _get_moving(self) -> List[Piece]:
+        return self._white if self._to_move == WHITE else self._black  # type: ignore
 
-    def _update_map(self):
+    def _get_opposing(self) -> List[Piece]:
+        return self._black if self._to_move == WHITE else self._white  # type: ignore
+
+    def _update_map(self) -> None:
         """Generates a hashmap of position: piece
         Might be able to bring it inside __init__ since state should
         only update through creating a new instance based on a Move
         object."""
         self._loc_map = { piece.position: piece for piece in self._white + self._black }
 
-    def _find_all_moves(self, previous=False):
-        """_find_all_moves."""
-        passive = {}
-        captures = {}
-        if previous:
-            moving = self._moved_pieces
-        else:
-            moving = self._moving_pieces
-        for piece in moving:
-            capturing_moves, passive_moves = self._find_piece_moves(piece)
-            captures[piece] = capturing_moves
-            passive[piece] = passive_moves
-        return passive, captures
+    def _find_all_moves(self, pieces=None):
+        """_find_all_moves.
+        Returns a dict of piece locations, then two lists of passive and capture moves"""
+        if not pieces:
+            pieces = self._get_moving()
+
+        move_list = map(self._find_piece_moves, pieces)
+        return {piece: moves for piece, moves in zip(pieces, move_list)}
 
     def _allowed_move(self, position, piece):
         """Calculate if the position is occupied, and if so if the move is blocked by a friendly piece or an enemy piece
         Returns self.EMPTY   if a move is allowed
         Returns self.BLOCKED if a move is blocked by an allied piece
         Returns self.CAPTURE if a move is a capture"""
+        # if position in [i.position for i in self._get_moving()]:
+        #     return self.BLOCKED
+        # elif position in [i.position for i in self._get_opposing()]:
+        #     return self.CAPTURE
+        # return self.EMPTY
+
         if position in self._loc_map.keys():
             occupied_by = self._loc_map[position]
             if occupied_by.colour == piece.colour:
@@ -109,11 +117,15 @@ class Board():
         else:
             return self.EMPTY
 
-    def _find_piece_moves(self, piece) -> Tuple[list[Position], list[Position]]:
+    def _find_piece_moves(self, piece, defending=False) -> Tuple[list[Position], list[Position]]:
         """Finds all the valid moves for a piece
         returns a tuple of captured and passive moves"""
         captures = []
         passive = []
+        defended = []
+
+        """ Rewrite as a map """
+
         for dir in piece.projections:
             # Iterate over all the directions a piece can move in
             for step in range(1, piece.distance + 1):
@@ -134,29 +146,105 @@ class Board():
                     captures.append(landed_on)
                     break
                 elif allowed == self.BLOCKED:
+                    defended.append(landed_on)
                     break
+        if defending:
+            return defended
         return captures, passive
 
-    def _get_king(self):
-        """Returns the king of the side *not* moving on this turn"""
-        king_w, king_b = tuple([i for i in self.pieces if isinstance(i, King)])
-        if self._moved == BLACK:
-            return king_b
-        else:
-            return king_w
+    def _get_king(self) -> King:
+       return [i for i in self._get_moving() if isinstance(i, King)].pop()
 
     def _evaluate_check(self):
         """_evaluate_check."""
+        moves = self._find_all_moves(self._opposition)
         king = self._get_king()
-        _, attacks = self._find_all_moves(self._moved)
-        if king in attacks:
+
+        # Extract all the attacks from the move
+        attacks = [attack for attack, _ in moves.values()]
+        attacks = list(chain.from_iterable(attacks))
+
+        if king.position in attacks:
             return True
         else:
             return False
 
     def _evaluate_mate(self):
         """_evaluate_mate."""
-        pass
+        if not self.is_check:
+            return False
+        
+        # Calculate the squares which surround the king
+        king = self._get_king()
+        captures, passives = self._find_piece_moves(king)
+
+        # For the passive moves, we need to check if those squares are attacked by the enemy pieces
+        # For the capture moves, we need to check if that piece is defended by another enemy piece
+        # In both cases, we can check if the square is defended by the enemy pieces
+        # We need to evaluate if a square is defended as if the king is not there.
+        opposing_pieces = [i for i in self._get_opposing() if not isinstance(i, King)]
+
+        passives = list(map(self._square_is_defended, passives, repeat(opposing_pieces)))
+        captures = list(map(self._square_is_defended, captures, repeat(opposing_pieces)))
+        # If there are no passive moves, then we need to check if any piece can block?
+        # We need all the positions between the attacker and the king
+        # King.pos - Attacker.pos (there may be more than one attacker too)
+        # attackers = [i for p, m in fetch_all_moves() if king.pos in m[1]]
+        # We also need to evaluate if that move then results in a check.
+        
+        # There must be a better way of doing this...
+        # Instead, we could mark pieces as pinned to the king, meaning they cannot be moved.
+        # This is the first pass when looking at the board.
+        # Then, when we calculate all the moves on the board we only iterate over pieces that
+        # are not pinned, or moves by the pinned piece which capture the attacking piece.
+        # The logic would look like:
+        """
+        Board instantiated
+        Find all the pieces that attack the king (isCheck)
+            if none: pass
+            if > 0:
+                Create a list of all the opposing attackers
+                Create a list of pinned allied pieces
+                Find all the moves for !pinned pieces which can block the check
+                Find all the moves for  pinned pieces which result in attackers = []
+                    This can work by instantiating a new board and then performing the same
+                    evaluation step
+                    So say attackers [R, R] and pinned [N], check = True
+                    We call Board(new_state), and then in that board we will have 
+                    pinned = [N], check = False so we allow this move
+                    The only states for which this will be valid is those which are the capture
+                    of one of the pinning pieces, so we only have to evauate the captures for 
+                    pinned = [N] in the first layer
+                Only allow moves for the pinned pieces which resolve the check.
+                Evaluate the moves for the king by:
+                    Create a list of all passive or capturing moves for the king
+                    For the passive moves, check if that square is attacked by an enemy piece
+                    For the capturing moves, check if that piece is defended by another piece
+                        This could instead work by
+                        For each king move:
+                            Evaluate if the position is in check
+        """
+        return passives
+
+        
+    def _square_is_defended(self, position: Position, pieces=None):
+        # using pieces from get_opposition()
+        # return if the square appears in their passive move list
+        if not pieces:
+            pieces = self._get_opposing()
+
+        moves = self._find_all_moves(self._get_opposing()).values()
+        passive_moves = [i[1] for i in moves]
+        defended_positions = list(map(self._find_piece_moves, self._get_opposing(), repeat(True)))
+        
+        passive = list(chain.from_iterable(passive_moves))
+        defended = list(chain.from_iterable(defended_positions))
+
+        if position in passive:
+            return True
+        elif position in defended:
+            return True
+        return False
 
     def _evaluate_score(self):
         """_evaluate_score."""

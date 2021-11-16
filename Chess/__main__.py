@@ -1,6 +1,12 @@
+from Chess.helpers import pieces_from_fen
 from Chess.state import Board  # type: ignore
 from Chess.view import view_board  # type: ignore
 from Chess.coordinate import Vec # type: ignore
+
+def construct_board(fen):
+    params = pieces_from_fen(fen)
+    board = Board(params[0], params[5], params[1])
+    return board
 
 if __name__ == "__main__":
     # A new game loop
