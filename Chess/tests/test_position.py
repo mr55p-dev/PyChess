@@ -95,3 +95,17 @@ def test_pos_vec_add_invalid(board, vec):
     step_vec = Vec(vec[0], vec[1])
     with pytest.raises(InvalidFormat):
         final_pos = init_pos + step_vec
+
+p1s = [(0, 0), (1, 0), (0, 1)]
+p2s = [(2, 2), (2, 0), (5, 0)]
+ans = [[(
+@pytest.mark.parametrize("p1,p2,ans", zip(p1s,p2s,ans))
+def test_pos_pos_sub(p1, p2):
+    start = Position(p1)
+    end = Position(p2)
+    result = end - start
+
+
+
+
+

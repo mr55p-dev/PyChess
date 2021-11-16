@@ -32,10 +32,12 @@ class Board():
 							The best continuting move (based on pieces which can be captured).
 
     """
-    BLOCKED  = 0
-    CAPTURE = 1
-    EMPTY    = 2
+    BLOCKED         = 0
+    CAPTURE         = 1
+    EMPTY           = 2
+    CHECKING_ATTACK = 3
     gametype = Tuple[List[Optional[Piece]], List[Optional[Piece]]]
+
     def __init__(self,
                  starting_position: gametype=new_game(),
                  turn: int = 0,
@@ -50,30 +52,93 @@ class Board():
         """
         self._white, self._black = starting_position
         self._turn = turn
-        self._update_map()
+        self._loc_map = { piece.position: piece for piece in self._white + self._black }
 
         self._to_move = to_move
         self._opposition = WHITE if to_move == BLACK else BLACK
 
-        self._is_check = self._evaluate_check()
-        self._is_mate = self._evaluate_mate()
-        self._evaluation = self._evaluate_score()
+        self._is_check = None
+        self._is_mate = None
+        self._evaluation = None
 
-
+        self._valid_moves = None
 
         self.other_FEN_params = other_fen_params
+        self._evaluated = False 
 
+
+    def __hash__(self) -> int:
+        return hash(self.to_fen())
 
     def __repr__(self) -> str:
-        """__repr__.
+        """__repr__.  """
 
-        :rtype: str
-        """
-        # Maybe write a board class which is accessable on rows and columns for ease.
         board = [[" " for _ in range(8)] for _ in range(8)]
         for loc, piece in self._loc_map.items():
-            board[loc.i][ loc.j] = piece.kind
+            board[loc.i][loc.j] = piece.kind  # type: ignore
         return "\n".join([" ".join([cell for cell in row]) for row in board])
+
+    def __allowed_move(self, position, piece):
+        """Calculate if the position is occupied, and if so if the move is blocked by a friendly piece or an enemy piece
+        Returns self.EMPTY if a move is allowed
+        Returns self.BLOCKED if a move is blocked by an allied piece
+        returns self.CHECKING_ATTACK if a move is a check
+        Returns self.CAPTURE if a move is a capture"""
+        if position in self._loc_map.keys():
+            occupied_by = self._loc_map[position]
+            if occupied_by.colour == piece.colour: return self.BLOCKED
+            else:
+                if isinstance(occupied_by, King): return self.CHECKING_ATTACK
+                else: return self.CAPTURE
+        else: return self.EMPTY
+
+    def __find_moves(self, piece) -> Dict[str, List[Piece]]:
+        """__find_moves.
+        :param self:
+        :param piece:
+        :rtype: Dict[str, List[Piece]]
+
+        Internal method to find moves.
+        Returns a dict with keys:
+            - passive   -> the passive moves for that piece
+            - captures  -> the captures this piece can make
+            - checks    -> the location of a check this piece is delivering
+            - defending -> the allied pieces this is defending
+        """
+
+        results = {}
+        for dir in piece.projections:
+            # Iterate over all the directions a piece can move in
+            pinned = None
+            for step in range(1, piece.distance + 1):
+                # Count up all the steps the piece can take until it meets
+                # a stop condition; capturing or moving onto an allied piece.
+                """Make invalid moves just set a flag on position,
+                rather than raising an exception?"""
+                """if not landed_on.allowed: break"""
+                try: landed_on = piece.position + (dir * step)
+                except InvalidFormat: break
+
+                if (allowed:=self.__allowed_move(landed_on, piece)) == self.EMPTY:
+                    # Store empty squares if we are not looking for a pin
+                    if pinned == None: results["passive"].append(landed_on)
+                elif allowed == self.CAPTURE:
+                    # Store a capture if we are not looking for a pin
+                    if pinned == None: results["captures"].append(landed_on); pinned = landed_on
+                    # Stop looking for a pin if we encounter a piece that isnt the king
+                    else: break
+                elif allowed == self.CHECKING_ATTACK:
+                    # Store a check if we are not looking for a pin
+                    if pinned == None: results["checks"].append(landed_on); break
+                    # Store a pin if we found one
+                    else: results["pin"].append(pinned); break
+                elif allowed == self.BLOCKED:
+                    # Store a piece as defended if we are not looking for a pin
+                    if pinned == None: results["defending"].append(landed_on)
+                    # Stop looking if there is another piece before the king
+                    else: break
+
+        return results
 
     def _get_moving(self) -> List[Piece]:
         return self._white if self._to_move == WHITE else self._black  # type: ignore
@@ -81,116 +146,66 @@ class Board():
     def _get_opposing(self) -> List[Piece]:
         return self._black if self._to_move == WHITE else self._white  # type: ignore
 
-    def _update_map(self) -> None:
-        """Generates a hashmap of position: piece
-        Might be able to bring it inside __init__ since state should
-        only update through creating a new instance based on a Move
-        object."""
-        self._loc_map = { piece.position: piece for piece in self._white + self._black }
-
-    def _find_all_moves(self, pieces=None):
-        """_find_all_moves.
-        Returns a dict of piece locations, then two lists of passive and capture moves"""
-        if not pieces:
-            pieces = self._get_moving()
-
-        move_list = map(self._find_piece_moves, pieces)
-        return {piece: moves for piece, moves in zip(pieces, move_list)}
-
-    def _allowed_move(self, position, piece):
-        """Calculate if the position is occupied, and if so if the move is blocked by a friendly piece or an enemy piece
-        Returns self.EMPTY   if a move is allowed
-        Returns self.BLOCKED if a move is blocked by an allied piece
-        Returns self.CAPTURE if a move is a capture"""
-        # if position in [i.position for i in self._get_moving()]:
-        #     return self.BLOCKED
-        # elif position in [i.position for i in self._get_opposing()]:
-        #     return self.CAPTURE
-        # return self.EMPTY
-
-        if position in self._loc_map.keys():
-            occupied_by = self._loc_map[position]
-            if occupied_by.colour == piece.colour:
-                return self.BLOCKED
-            else:
-                return self.CAPTURE
-        else:
-            return self.EMPTY
-
-    def _find_piece_moves(self, piece, defending=False) -> Tuple[list[Position], list[Position]]:
-        """Finds all the valid moves for a piece
-        returns a tuple of captured and passive moves"""
-        captures = []
-        passive = []
-        defended = []
-
-        """ Rewrite as a map """
-
-        for dir in piece.projections:
-            # Iterate over all the directions a piece can move in
-            for step in range(1, piece.distance + 1):
-                # Count up all the steps the piece can take until it meets
-                # a stop condition; capturing or moving onto an allied piece.
-                """Make invalid moves just set a flag on position,
-                rather than raising an exception?"""
-                """if not landed_on.allowed: break"""
-                try:
-                    landed_on = piece.position + (dir * step)
-                except InvalidFormat:
-                    break
-
-                if (allowed:=self._allowed_move(landed_on, piece)) == self.EMPTY:
-                    passive.append(landed_on)
-                elif allowed == self.CAPTURE:
-                    # Add the possible capture to the captures map
-                    captures.append(landed_on)
-                    break
-                elif allowed == self.BLOCKED:
-                    defended.append(landed_on)
-                    break
-        if defending:
-            return defended
-        return captures, passive
-
     def _get_king(self) -> King:
        return [i for i in self._get_moving() if isinstance(i, King)].pop()
 
-    def _evaluate_check(self):
+    def _evaluate_check(self) -> List[Optional[Piece]]:
         """_evaluate_check."""
-        moves = self._find_all_moves(self._opposition)
+        moves = self.get_moves_set(self._get_opposing())
         king = self._get_king()
 
         # Extract all the attacks from the move
-        attacks = [attack for attack, _ in moves.values()]
-        attacks = list(chain.from_iterable(attacks))
+        attacks = {piece: move_list["attacks"] for piece, move_list in moves}
 
-        if king.position in attacks:
-            return True
-        else:
-            return False
+        # Return a list of all the pieces which have the king as a valid attack
+        return [piece for piece, attack_list in attacks.items() if king.position in attack_list]
 
     def _evaluate_mate(self):
         """_evaluate_mate."""
-        if not self.is_check:
+        if not (attackers := self.is_check):
             return False
+        # I am working on calculating valid moves in here as well, so it will need refactoring
+        # into the move validation functions
         
-        # Calculate the squares which surround the king
+        # attackers
+        """
+        Now i need to evaluate if a piece is pinned.
+        We can do this by modifying our original __find_moves function to add a key for pinning_king
+        """
         king = self._get_king()
+        moves = self.get_moves_set(self._get_moving())
+
+        # Get the pinned pieces, and therfore the not pinned pieces.
+        # This is the piece that is enforcing the pin
+        pinning_piece = [p for p, loc in moves if loc["pin"]]
+
+        # This is the location of the pin
+        pinned_pieces = [loc["pin"] for _, loc in moves]
+
+        # Instead lets try this:
+        pin = {p: l["pin"][0] for 
+        not_pinned = [piece for piece in self._get_moving() if piece not in pinned]
+
+        # We now look at all the moves for the pinned pieces which give a new position that
+        # is not check
+        """
+        A pinned piece will only have valid moves if there is one and only one attacker.
+        In that case, it can move anywhere along the line which maintains the pin
+        """
+        # Dict of piece: [position]
+        for piece in attackers:
+            path = piece.position - king.position
+            for pin in pinned:
+
+
+
+        # Calculate the squares which surround the king
         captures, passives = self._find_piece_moves(king)
 
-        # For the passive moves, we need to check if those squares are attacked by the enemy pieces
-        # For the capture moves, we need to check if that piece is defended by another enemy piece
-        # In both cases, we can check if the square is defended by the enemy pieces
-        # We need to evaluate if a square is defended as if the king is not there.
         opposing_pieces = [i for i in self._get_opposing() if not isinstance(i, King)]
 
         passives = list(map(self._square_is_defended, passives, repeat(opposing_pieces)))
         captures = list(map(self._square_is_defended, captures, repeat(opposing_pieces)))
-        # If there are no passive moves, then we need to check if any piece can block?
-        # We need all the positions between the attacker and the king
-        # King.pos - Attacker.pos (there may be more than one attacker too)
-        # attackers = [i for p, m in fetch_all_moves() if king.pos in m[1]]
-        # We also need to evaluate if that move then results in a check.
         
         # There must be a better way of doing this...
         # Instead, we could mark pieces as pinned to the king, meaning they cannot be moved.
@@ -250,6 +265,28 @@ class Board():
         """_evaluate_score."""
         pass
 
+    def update(self):
+        if not (changed := self.__hash__() == self._evaluated):
+            # In here we calculate all the evaluations for the position:
+            # is_check
+            # is_mate
+            # is_stalemate
+            # is_halfmove_timeout
+            # is_resigned
+            # valid_moves
+            # We only need to do this more than once if the position has been changed by some outside
+            # force, and since it is computationally expensive its easier to just check the hash.
+            # We can also use the hash as a caching mechanism when doing analysis
+            pass
+        return changed
+
+    def get_moves(self, piece):
+        return self.__find_moves(piece)
+
+    def get_moves_set(self, pieces):
+        move_list = map(self.__find_moves, pieces)
+        return {piece: moves for piece, moves in zip(pieces, move_list)}
+
     @property 
     def turn(self) -> int:
         return self._turn
@@ -265,8 +302,12 @@ class Board():
         return self._black + self._white
 
     @property
-    def is_check(self) -> bool:
-        return self._is_check
+    def is_check(self) -> Optional[List[Piece]]:
+        return self._evaluate_check()
+
+    @property
+    def is_mate(self) -> bool:
+        return self._evaluate_mate()  # type: ignore
     
     @property
     def to_move(self):

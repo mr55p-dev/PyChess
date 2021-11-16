@@ -1,4 +1,5 @@
 from typing import ClassVar, Tuple, Union
+import math
 import Chess.constants as cons
 from Chess.exceptions import InvalidFormat, InvalidVector
 
@@ -119,9 +120,17 @@ class Position:
         """Support addition by a vector Vec"""
         return Position((self._i + o.i, self._j + o.j))
 
-    def __sub__(self, o: Vec):
+    def __sub__(self, o: Union[Vec, 'Position']):
         """Support subtraction by a vector Vec"""
-        return Position((self._i - o.i, self._j - o.j))
+        if isinstance(o, Vec): return Position((self._i - o.i, self._j - o.j))
+        elif isinstance(o, Position):
+            sign = lambda x: int(math.copysign(1, x))
+            di = o._i - self._i
+            dj = o._j - self._j
+            ri = range(self._i, o._i, sign(di))
+            rj = range(self._j, o._j, sign(dj))
+            assert len(ri) == len(rj)
+            return [Position((i, j)) for i, j in zip(ri, rj)]
 
     def __hash__(self) -> int:
         """Generate a hash of the position
