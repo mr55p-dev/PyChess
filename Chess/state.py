@@ -102,11 +102,18 @@ class Board():
         Returns a dict with keys:
             - passive   -> the passive moves for that piece
             - captures  -> the captures this piece can make
-            - checks    -> the location of a check this piece is delivering
             - defending -> the allied pieces this is defending
+            - check    -> the location of a check this piece is delivering
+            - pin      -> the location of a pin this piece is exerting
         """
 
         results = {}
+        results["passive"] = []
+        results["captures"] = []
+        results["defending"] = []
+
+        results["check"] = None
+        results["pin"] = None
         for dir in piece.projections:
             # Iterate over all the directions a piece can move in
             pinned = None
@@ -129,9 +136,9 @@ class Board():
                     else: break
                 elif allowed == self.CHECKING_ATTACK:
                     # Store a check if we are not looking for a pin
-                    if pinned == None: results["checks"].append(landed_on); break
+                    if pinned == None: results["check"] = landed_on; break
                     # Store a pin if we found one
-                    else: results["pin"].append(pinned); break
+                    else: results["pin"] = pinned; break
                 elif allowed == self.BLOCKED:
                     # Store a piece as defended if we are not looking for a pin
                     if pinned == None: results["defending"].append(landed_on)
@@ -147,7 +154,15 @@ class Board():
         return self._black if self._to_move == WHITE else self._white  # type: ignore
 
     def _get_king(self) -> King:
-       return [i for i in self._get_moving() if isinstance(i, King)].pop()
+        return [i for i in self._get_moving() if isinstance(i, King)].pop()
+
+    def _filter_moves(self, moves, by):
+        valid_moves = {}
+        # valid_moves = {type: [move for move in move_list if move in by] for type, move_list in moves.items()}
+        for type, move_list in moves.items():
+            if not isinstance(move_list, list): pass
+            valid_moves[type] = [move for move in move_list if move in by]
+        return valid_moves
 
     def _evaluate_check(self) -> List[Optional[Piece]]:
         """_evaluate_check."""
@@ -169,33 +184,50 @@ class Board():
         
         # attackers
         """
-        Now i need to evaluate if a piece is pinned.
+        Now I need to evaluate if a piece is pinned.
         We can do this by modifying our original __find_moves function to add a key for pinning_king
         """
         king = self._get_king()
-        moves = self.get_moves_set(self._get_moving())
+        all_moves = self.get_moves_set(self._get_moving())
 
-        # Get the pinned pieces, and therfore the not pinned pieces.
-        # This is the piece that is enforcing the pin
-        pinning_piece = [p for p, loc in moves if loc["pin"]]
+        # Create a list of tuples of a piece exerting a pin pins[0] on 
+        # some other position pins[1]
+        pins = [(piece, results["pin"]) for piece, results in all_moves if results["pin"]]
+        pinned_pieces = [self._loc_map[pinned] for _, pinned in pins] 
+        other_pieces = [piece for piece in self._get_moving() if piece not in pinned_pieces]
+        
+        filter = lambda moves, by: list(map(self._filter_moves, moves, repeat(by)))
 
-        # This is the location of the pin
-        pinned_pieces = [loc["pin"] for _, loc in moves]
+        # CASE: IS NOT CHECK: ATTACKERS == None
+        
+        # Look over each pinner, pinned piece
+        for pinner, pinned_loc in pins:
+            # Loop up the piece identifier for the pinned piece
+            # Calculate the path of squares between the pinning 
+            # piece and the king
+            pinned = self._loc_map[pinned_loc]
+            path = pinner.position - king.position
 
-        # Instead lets try this:
-        pin = {p: l["pin"][0] for 
-        not_pinned = [piece for piece in self._get_moving() if piece not in pinned]
+            # For each move type, filter the moves to be only those on the path
+            all_moves[pinned] = {type: filter(moves, path) for type, moves in all_moves[pinned].items()}
 
-        # We now look at all the moves for the pinned pieces which give a new position that
-        # is not check
-        """
-        A pinned piece will only have valid moves if there is one and only one attacker.
-        In that case, it can move anywhere along the line which maintains the pin
-        """
-        # Dict of piece: [position]
-        for piece in attackers:
-            path = piece.position - king.position
-            for pin in pinned:
+        # CASE: IS CHECK: ATTACKERS == 1
+
+        # The same logic applies for pinned pieces as always, however now we have
+        # some additional constraints to apply on the pieces which are not pinned.
+        # In this case where len(attackers) == 1 there is the possibility for
+        # other pieces to block the checkon squares between the attacker and the
+        # king. These may hang the piece but they are still legal moves
+        # Such is the case with backrank mate, where multiple pieces can come
+        # in to defend the king as a legal defense before checkmate can be achieved.
+        # In this circumstance, we need to know the path from the attacker to the king
+        # and then do the same move-filtering process as before
+
+        if len(attackers) == 1:
+            path = attackers[0].position - king.position
+            for piece in other_pieces: 
+                all_moves[piece] = {type: filter(moves, path) for type, moves in all_moves[piece].items()}
+
 
 
 
