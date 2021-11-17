@@ -58,7 +58,6 @@ class Board():
         # Construct a map of location: piece
         self._white, self._black = starting_position
         self._turn = turn
-        self._loc_map = { piece.position: piece for colour in starting_position for piece in colour}
 
         # Define convenient variables so we know which pieces are moving
         self._to_move = to_move
@@ -91,7 +90,7 @@ class Board():
         """
 
         board = [[" " for _ in range(8)] for _ in range(8)]
-        for loc, piece in self._loc_map.items():
+        for loc, piece in self.loc_map.items():
             board[loc.i][loc.j] = piece.kind  # type: ignore
         return "\n".join([" ".join([cell for cell in row]) for row in board])
 
@@ -109,8 +108,8 @@ class Board():
         :param position:
         :param piece:
         """
-        if position in self._loc_map.keys():
-            occupied_by = self._loc_map[position]
+        if position in self.loc_map.keys():
+            occupied_by = self.loc_map[position]
             if occupied_by.colour == piece.colour: return self.BLOCKED
             else:
                 if isinstance(occupied_by, King): return self.CHECKING_ATTACK
@@ -211,7 +210,7 @@ class Board():
 
         # Get a list of the pieces marked as defended and only keep the moves
         # which are NOT in the defended list
-        defended_pieces = [moves["defending"] for moves in moves_without_king.values()]
+        defended_pieces = [i for moves in moves_without_king.values() for i in moves["defending"]]
 
         # Construct the same response as candidates
         valid["captures"] = [i for i in candidates["captures"] if i not in defended_pieces]
@@ -256,12 +255,10 @@ class Board():
         king = self._get_king()
         
         if len(attackers) > 1:
-            print("This would be bad")
             if piece != king: return results 
             else: return self.__find_king_moves(king)
 
         elif len(attackers) == 1:
-            print("This would also be bad")
             # Find the path of the attacking piece to the king
             # Only moves which intercept this path are allowed
             path = attackers[0].position - king.position
@@ -270,21 +267,13 @@ class Board():
         # Finally we resolve pins
         # Find the opposing piece pinning the allied piece (pinned_by, piece)
         opposing_moves = self.__find_move_set(self._get_opposing())
-        # pinned_by = []
-        # for enemy_piece, moves in opposing_moves.items():
-        #     if moves["pin"] == piece.position:
-        #         pinned_by.append(enemy_piece)
-        #         print(f"Pinned by {piece}")
         pinned_by = [enemy_piece for enemy_piece, moves in opposing_moves.items() if moves["pin"] == piece.position]
         if pinned_by:
-            print(f"{piece.position} pinned by {pinned_by[0].position}")
             # Update the moves to be only those which maintain the pin AND resolve the check.
             # Note a piece may only be pinned by one other since there is only one king...
             path = pinned_by.pop().position - king.position
-            print(path)
             piece_moves = self.__intersection(piece_moves, path) 
         
-        print("--END--")
         return piece_moves
 
     def _get_moving(self) -> List[Piece]:
@@ -402,6 +391,10 @@ class Board():
         """
         return {piece: moves for piece, moves in zip(pieces, list(map(self.get_moves, pieces)))}
 
+    @property
+    def loc_map(self):
+        return { piece.position: piece for piece in self._get_moving() + self._get_opposing()}
+
     @property 
     def turn(self) -> int:
         return self._turn
@@ -410,7 +403,7 @@ class Board():
     def pos_map(self) -> dict:
         """Convenience attribute
         Returns a hash map of each occupied position and its associated piece"""
-        return self._loc_map
+        return self.loc_map
 
     @property
     def pieces(self) -> list:
@@ -424,6 +417,7 @@ class Board():
     def is_mate(self) -> bool:
         return self._is_mate
     
+    @property
     def is_stale(self) -> bool:
         return self._is_stale
     
@@ -437,8 +431,8 @@ class Board():
         self._is_check = bool(self._evaluate_check()) 
 
         mate = self._evaluate_mate()
-        if mate == self.CHECKMATE: self._is_mate = True
-        elif mate == self.STALEMATE: self._is_stale = True
+        if mate == self.CHECKMATE: self._is_mate = True; self._is_stale = False
+        elif mate == self.STALEMATE: self._is_stale = True; self._is_mate = False
         elif mate == self.CONTINUE: self._is_mate = self._is_stale = False
 
         # Calculate the possible moves
@@ -449,7 +443,7 @@ class Board():
         ranks = [["" for i in range(8)] for _ in range(8)]
         # The rank of a piece will be calculated as 7 - i; 
         # In FEN the 8th rank (list index 7) is at i=0
-        for position, piece in self._loc_map.items():
+        for position, piece in self.loc_map.items():
             symbol = piece.kind
             if piece.colour == BLACK: symbol = symbol.lower()
             ranks[7-position.i][position.j] = symbol

@@ -27,7 +27,7 @@ def view_board(board: Board, show_moves=None):
     """Simple fuction to view a game state"""
     representation = [["   " for _ in range(8)] for _ in range(8)]
     count = 0
-    for loc, piece in board._loc_map.items():
+    for loc, piece in board.loc_map.items():
         prefix = bcolors.WHITE_PIECE if piece.colour == WHITE else bcolors.BLACK_PIECE
         representation[loc.i][loc.j] = f"{prefix} {piece.kind} {bcolors.ENDC}"
 

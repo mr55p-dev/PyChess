@@ -12,13 +12,15 @@ if __name__ == "__main__":
         fen = "r2qk2r/ppp2ppp/5n2/3p1b2/3b1B2/2NN4/PP2PPPP/n1KQ1B1R w kq - 4 11"
     params = pieces_from_fen(fen)
     pieces, to_move, _, _, _, turn = pieces_from_fen(fen)
-    board = Board(pieces, turn, to_move, params[2:5])
+    board = Board(pieces, to_move, turn, params[2:5])
+    print(f"This position is check: {board.is_check}")
+    print(f"This position is stalemate: {board.is_stale}")
+    print(f"This position is mate: {board.is_mate}")
     while True:
         view_board(board)
-        print(f"This position is check: {board.is_check}")
         t = input("Enter a square to see positions: ")
         visualise = Position(t)
-        vp = board._loc_map[visualise]
+        vp = board.loc_map[visualise]
         view_board(board, show_moves=vp)
         print(f"FEN: {board.to_fen()}")
         input()
