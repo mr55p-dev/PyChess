@@ -21,6 +21,7 @@ if __name__ == "__main__":
         t = input("Enter a square to see positions: ")
         visualise = Position(t)
         vp = board.loc_map[visualise]
+        print(board.get_moves(vp))
         view_board(board, show_moves=vp)
         print(f"FEN: {board.to_fen()}")
         input()

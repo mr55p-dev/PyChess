@@ -103,8 +103,9 @@ class Board():
 
         Returns self.EMPTY if a move is allowed
         Returns self.BLOCKED if a move is blocked by an allied piece
-        returns self.CHECKING_ATTACK if a move is a check
+        Returns self.CHECKING_ATTACK if a move is a check
         Returns self.CAPTURE if a move is a capture
+        Returns self.DISALLOWED if a move is not allowed (such as pawn push)
 
         :param position:
         :param piece:
@@ -112,16 +113,16 @@ class Board():
         capture_allowed = True
         passive_allowed = True
         if isinstance(piece, Pawn):
+
             pos = piece.position
-            start = 1 if piece.colour == WHITE else 7
+            # The pieces start at either i=1 or i=6
+            start = 1 if piece.colour == WHITE else 6
             has_moved = bool(start - pos._i)
-            if abs(pos._j - position._j) > 0:
+            if pos._j - position._j != 0:
                 passive_allowed = False
-                capture_allowed = True
-            if abs(pos._j - position._j) == 0:
-                passive_allowed = True
+            if pos._j - position._j == 0:
                 capture_allowed = False
-            if has_moved and abs(pos._i - position._i) == 2:
+            if has_moved and pos._i - position._i in [2, -2]:
                 return self.DISALLOWED
 
         if position in self.loc_map.keys():
@@ -129,10 +130,10 @@ class Board():
             if occupied_by.colour == piece.colour: return self.BLOCKED
             else:
                 if isinstance(occupied_by, King): return self.CHECKING_ATTACK
-                else: 
+                else:
                     if capture_allowed: return self.CAPTURE
                     else: return self.DISALLOWED
-        else: 
+        else:
             if passive_allowed: return self.EMPTY
             else: return self.DISALLOWED
 
@@ -168,7 +169,8 @@ class Board():
                 # exception.
                 try: landed_on = piece.position + (dir * step)
                 except InvalidFormat: break
-
+                
+                                
                 if (allowed:=self.__allowed_move(landed_on, piece)) == self.EMPTY:
                     # Store empty squares if we are not looking for a pin
                     if pinned == None: results["passive"].append(landed_on)
@@ -448,6 +450,14 @@ class Board():
         # Calculate the possible moves
         self._allowed_moves = self.get_move_set(self._get_moving())
 
+    def move(self, old, new):
+        next_moving = BLACK if self._to_move == WHITE else WHITE
+        next_turn = int(self._turn) + 1
+        new_board = Board((self._white, self._black), next_moving, next_turn)
+        old_piece = new_board.loc_map[old]
+        old_piece._position = new
+        return new_board
+
     def to_fen(self):
         fields = []
         ranks = [["" for i in range(8)] for _ in range(8)]
@@ -506,5 +516,7 @@ class Game():
 	:attr turn: 			int > 0
     """
 
-    pass
+    def __init__(self, initial_board = Board()) -> None:
+        self._initial_board = board
+
 
