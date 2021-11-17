@@ -27,17 +27,19 @@ def view_board(board: Board, show_moves=None):
     """Simple fuction to view a game state"""
     representation = [["   " for _ in range(8)] for _ in range(8)]
     count = 0
-    for loc, piece in board.map.items():
+    for loc, piece in board._loc_map.items():
         prefix = bcolors.WHITE_PIECE if piece.colour == WHITE else bcolors.BLACK_PIECE
         representation[loc.i][loc.j] = f"{prefix} {piece.kind} {bcolors.ENDC}"
 
     if show_moves:
-        captures, passives = board._find_piece_moves(show_moves)
-        for cap in captures:
+        piece_moves = board.get_moves(show_moves)
+        for cap in piece_moves["captures"]:
             # Make this a settext thing instead
             representation[cap.i][cap.j] = " \u2715 "
-        for pas in passives:
+        for pas in piece_moves["passive"]:
             representation[pas.i][pas.j] = " \u25cf "
+        print("PIECE MOVES")
+        print(piece_moves)
         
     for i_ind, i in enumerate(representation):
         for j_ind, _ in enumerate(i):

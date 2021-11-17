@@ -4,3 +4,4 @@ from .coordinate import Position, Vec
 from .view import view_board
 from .pieces import Piece
 from .helpers import pieces_from_fen
+from .__main__ import construct_board

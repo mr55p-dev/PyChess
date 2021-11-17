@@ -18,7 +18,7 @@ if __name__ == "__main__":
         print(f"This position is check: {board.is_check}")
         t = input("Enter a square to see positions: ")
         visualise = Position(t)
-        vp = board.map[visualise]
+        vp = board._loc_map[visualise]
         view_board(board, show_moves=vp)
         print(f"FEN: {board.to_fen()}")
         input()

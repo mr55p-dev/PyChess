@@ -1,3 +1,4 @@
+from itertools import repeat
 from typing import ClassVar, Tuple, Union
 import math
 import Chess.constants as cons
@@ -108,8 +109,8 @@ class Position:
 
     def __eq__(self, o) -> bool:
         """Support testing equality between two instances of this class"""
-        assert isinstance(o, Position)
-        return self.algebraic == o.algebraic
+        if isinstance(o, Position): return self.algebraic == o.algebraic
+        else: return self.__hash__() == o
 
     def __ne__(self, o) -> bool:
         """Support testing equality between two instances of this class"""
@@ -129,8 +130,15 @@ class Position:
             dj = o._j - self._j
             ri = range(self._i, o._i, sign(di))
             rj = range(self._j, o._j, sign(dj))
-            assert len(ri) == len(rj)
-            return [Position((i, j)) for i, j in zip(ri, rj)]
+            # If there is a straight or diagonal path between the pieces then give that
+            if len(ri) == len(rj): 
+                return [Position((i, j)) for i, j in zip(ri, rj)]
+            elif len(ri) == 0:
+                return [Position((i, j)) for i, j in zip(repeat(self._i), rj)]
+            elif len(rj) == 0:
+                return [Position((i, j)) for i, j in zip(ri, repeat(self._j))]
+            # Else just give the original location (used for the path of knights)
+            else: return [Position((self._i, self._j))]
 
     def __hash__(self) -> int:
         """Generate a hash of the position

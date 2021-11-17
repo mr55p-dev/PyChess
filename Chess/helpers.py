@@ -1,5 +1,5 @@
 from Chess.coordinate import Position
-from Chess.pieces import King, Queen, Rook, Knight, Bishop, Pawn
+from Chess.pieces import King, Piece, Queen, Rook, Knight, Bishop, Pawn
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
 
 def new_game():
