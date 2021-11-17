@@ -1,7 +1,7 @@
 from itertools import chain, repeat
 from typing import Dict, Tuple, List, Optional
 from Chess.constants import BLACK, RANKS, WHITE
-from Chess.pieces import King, Piece
+from Chess.pieces import King, Pawn, Piece
 from Chess.coordinate import Position
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
@@ -36,6 +36,7 @@ class Board():
     CAPTURE         = 1
     EMPTY           = 2
     CHECKING_ATTACK = 3
+    DISALLOWED      = 4
 
     CHECKMATE = 10
     STALEMATE = 20
@@ -108,13 +109,32 @@ class Board():
         :param position:
         :param piece:
         """
+        capture_allowed = True
+        passive_allowed = True
+        if isinstance(piece, Pawn):
+            pos = piece.position
+            start = 1 if piece.colour == WHITE else 7
+            has_moved = bool(start - pos._i)
+            if abs(pos._j - position._j) > 0:
+                passive_allowed = False
+                capture_allowed = True
+            if abs(pos._j - position._j) == 0:
+                passive_allowed = True
+                capture_allowed = False
+            if has_moved and abs(pos._i - position._i) == 2:
+                return self.DISALLOWED
+
         if position in self.loc_map.keys():
             occupied_by = self.loc_map[position]
             if occupied_by.colour == piece.colour: return self.BLOCKED
             else:
                 if isinstance(occupied_by, King): return self.CHECKING_ATTACK
-                else: return self.CAPTURE
-        else: return self.EMPTY
+                else: 
+                    if capture_allowed: return self.CAPTURE
+                    else: return self.DISALLOWED
+        else: 
+            if passive_allowed: return self.EMPTY
+            else: return self.DISALLOWED
 
     def __find_moves(self, piece) -> Dict[str, List[Piece]]:
         """__find_moves.
@@ -167,6 +187,8 @@ class Board():
                     if pinned == None: results["defending"].append(landed_on); break
                     # Stop looking if there is another piece before the king
                     else: break
+                elif allowed == self.DISALLOWED:
+                    break
 
         return results
 
@@ -218,18 +240,6 @@ class Board():
         valid["pin"] = None
         return valid
         
-        """
-        Checkmate is the condition that:
-        if not (king_captures and king_passives) and check:
-            checkmate
-
-        Stalemate is the condition
-        if not (king_captures and king_passives) and not check:
-            stalemate
-        """
-
-
-
     def __filter_moves(self, piece):
         """__filter_moves.
         Will filter out illegal moves from __find_moves(piece).
