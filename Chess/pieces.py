@@ -41,10 +41,10 @@ class Piece:
         self._max_distance = max_distance
 
     def __repr__(self) -> str:
-        return self._kind
+        return f"<{self._kind} colour {self._colour} at {self._position}>"
 
     def __str__(self) -> str:
-        return self._kind
+        return f"<{self._kind} colour {self._colour} at {self._position}>"
 
     @property
     def colour(self) -> int:
@@ -97,7 +97,7 @@ class King(Piece):
         """The directions this piece can move in"""
         return [
             Vec(1, 1),
-            Vec(1, 0),
+            Vec(1, 0), 
             Vec(1, -1),
             Vec(0, 1),
             Vec(0, -1),

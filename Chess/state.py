@@ -1,7 +1,9 @@
+import re
+from copy import copy
 from itertools import chain, repeat
 from typing import Dict, Tuple, List, Optional
 from Chess.constants import BLACK, RANKS, WHITE
-from Chess.pieces import King, Pawn, Piece
+from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook
 from Chess.coordinate import Position
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
@@ -450,13 +452,76 @@ class Board():
         # Calculate the possible moves
         self._allowed_moves = self.get_move_set(self._get_moving())
 
-    def move(self, old, new):
+    def move(self, move_str):
+        """
+        d3
+        Bd3
+        Bad3
+        cxd3
+        Bxd3
+        """
+        print(f"-------CURRENT TURN: {self._to_move}---------")
+        piece_id = re.match(r'([A-Z])', move_str)
+        instance = Piece
+        if not piece_id:
+            instance = Pawn
+        elif piece_id.group(0) == 'K':
+            instance = King
+        elif piece_id.group(0) == 'Q':
+            instance = Queen
+        elif piece_id.group(0) == 'R':
+            instance = Rook
+        elif piece_id.group(0) == 'N':
+            instance = Knight
+        elif piece_id.group(0) == 'B':
+            instance = Bishop
+
+        takes = re.match(r'x', move_str)
+        moves = re.match(r'\w*([a-z]\d)', move_str)
+        if not moves: return None
+
+        destination_square = Position(moves.group(1).upper())
+        all_moves = self.get_move_set(self._get_moving())
+        moving_piece_colour = [i.colour for i, _ in all_moves.items()]
+        print(f"Moving piece colour = {moving_piece_colour}")
+        moving_piece = []
+
+        moving_types = ["passive", "captures"]
+        for piece, moves in all_moves.items():
+            for move_type, piece_moves in moves.items():
+                if move_type in moving_types and destination_square in piece_moves:
+                    moving_piece.append(piece)
+        moving_piece = [i for i in moving_piece if isinstance(i, instance)]
+        print(f"matched {moving_piece} pieces")
+        if len(moving_piece) > 1:
+            print("Need more clarity")
+            return
+        elif not moving_piece:
+            print(f"No piece to move to {destination_square}")
+            return
+
+        piece = moving_piece.pop()
+
+        new_piece = copy(piece)
+        new_piece._position = destination_square
+
+        new_moving = self._get_moving()
+        new_moving = [i for i in new_moving if i.position != piece.position]
+        new_moving.append(new_piece)
+
+        new_opposition = self._get_opposing()
+        if takes:
+            removed_piece = new_opposition.index(
+            new_opposition = [i for i in new_opposition if i.position != destination_square]
+
+        new_white = new_moving if self._turn == BLACK else new_opposition
+        new_black = new_opposition if self._turn == BLACK else new_moving
+
         next_moving = BLACK if self._to_move == WHITE else WHITE
         next_turn = int(self._turn) + 1
-        new_board = Board((self._white, self._black), next_moving, next_turn)
-        old_piece = new_board.loc_map[old]
-        old_piece._position = new
-        return new_board
+
+        return Board((new_white, new_black), next_moving, next_turn)
+
 
     def to_fen(self):
         fields = []
