@@ -1,4 +1,5 @@
-from Chess.coordinate import Position
+import re
+from Chess.coordinate import Move, Position
 from Chess.pieces import King, Piece, Queen, Rook, Knight, Bishop, Pawn
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
 
@@ -26,8 +27,8 @@ def new_game():
 
     black_pieces = [
         Rook(colour=BLACK, position=Position((7,0))),
-        Bishop(colour=BLACK, position=Position((7,1))),
-        Knight(colour=BLACK, position=Position((7,2))),
+        Knight(colour=BLACK, position=Position((7,1))),
+        Bishop(colour=BLACK, position=Position((7,2))),
         Queen(colour=BLACK, position=Position((7,3))),
         King(colour=BLACK, position=Position((7,4))),
         Bishop(colour=BLACK, position=Position((7,5))),
@@ -106,3 +107,58 @@ def pieces_from_fen(fen_string: str):
 
     return [(white_pieces, black_pieces), next_turn, castle, en_passant, half_moves, n_moves]
 
+
+def parse_match(move_repr):
+    if move_repr[0] == '':
+        piece = 'P'
+    else:
+        piece = move_repr[0]
+
+    start = move_repr[1]
+    if len(start) == 2:
+        start = Position(start.upper())
+
+    if move_repr[2] == '':
+        takes = False
+    else:
+        takes = True
+
+    if move_repr[3] == '': raise ValueError("No destination supplied")
+    end = Position(move_repr[3].upper())
+
+    return (start, end, piece, takes)
+
+def lookup_move(board, start, end, piece, takes):
+    moves = board.allied_moves()
+
+    # Filter out only the pieces of correct kind.
+    filt = {board_piece: move for board_piece, move in moves.items() if board_piece.kind == piece}
+    target = "captures" if takes else "passive"
+
+    # Select only pieces which have the destination in either their "passive" or "captures"
+    # list (dependent on if takes).
+    candidates = [piece for piece, movelist in filt.items() if end in movelist[target]]
+
+    if len(candidates) == 0: raise ValueError(f"Piece moving to {end} could not be found")
+    elif len(candidates) > 1:
+        # Hacky way to check if the file is the same
+        if start:
+            candidates = [i for i in candidates if str(board.piece_map[i])[0] == start.upper()]
+        if len(candidates) != 1:
+            raise ValueError(f"Multiple pieces may move to {end}: {candidates}.")
+    
+    return board.piece_map[candidates[0]]
+
+def move_from_str(move_str, board):
+    pattern = r'([KQRNB])?([a-h]\d?)?(x)?([a-z]\d)$'
+    matches = re.findall(pattern, move_str)
+    print(matches)
+
+    if not matches: raise ValueError("A valid move could not be found")
+    move_repr = matches[0]
+    
+    start, end, piece, takes = parse_match(move_repr)
+    if len(start) != 2: start = lookup_move(board, start, end, piece, takes)
+
+    return Move(start, end, takes)
+    

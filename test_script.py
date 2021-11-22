@@ -1,18 +1,15 @@
 from Chess.constants import BLACK, PIECE_TYPES, WHITE
 from Chess.helpers import pieces_from_fen
+from Chess.__main__ import construct_board
 from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook 
 from Chess.state import Board
 from Chess.coordinate import Position, Vec
 from Chess.view import view_board
 
 if __name__ == "__main__":
-    # Old checking.
-    fen = input("FEN string >>> ")
-    if not fen:
-        fen = "r2qk2r/ppp2ppp/5n2/3p1b2/3b1B2/2NN4/PP2PPPP/n1KQ1B1R w kq - 4 11"
-    params = pieces_from_fen(fen)
-    pieces, to_move, _, _, _, turn = pieces_from_fen(fen)
-    board = Board(pieces, to_move, turn, params[2:5])
+
+    board = construct_board("r1bqkbnr/p3pppp/1pP5/3p4/8/8/PPPQPPPP/RN2KBNR b KQkq - 0 11")
+
     print(f"This position is check: {board.is_check}")
     print(f"This position is stalemate: {board.is_stale}")
     print(f"This position is mate: {board.is_mate}")

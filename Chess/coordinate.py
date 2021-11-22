@@ -1,5 +1,6 @@
+import re
 from itertools import repeat
-from typing import ClassVar, Tuple, Union
+from typing import ClassVar, Optional, Tuple, Union
 import math
 import Chess.constants as cons
 from Chess.exceptions import InvalidFormat, InvalidVector
@@ -167,4 +168,29 @@ class Position:
     def j(self) -> int:
         return self._j
 
+class Move():
+    def __init__(self, start, to, takes: bool):
+        self._from = start
+        self._to = to
+        self._takes = takes
+
+    @property
+    def piece(self) -> str:
+        return self._piece
+
+    @property
+    def start(self) -> Optional[Position]:
+        return self._from
+
+    @property
+    def end(self) -> Position:
+        return self._to
+
+    @property
+    def takes(self) -> bool:
+        return self._takes
+
+
+
+        
 
