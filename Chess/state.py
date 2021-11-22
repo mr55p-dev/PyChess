@@ -39,6 +39,7 @@ class Board():
     EMPTY           = 2
     CHECKING_ATTACK = 3
     DISALLOWED      = 4
+    ATTACKS         = 5
 
     CHECKMATE = 10
     STALEMATE = 20
@@ -137,6 +138,7 @@ class Board():
                     else: return self.DISALLOWED
         else:
             if passive_allowed: return self.EMPTY
+            elif capture_allowed: return self.ATTACKS
             else: return self.DISALLOWED
 
     def __find_moves(self, piece) -> Dict[str, List[Piece]]:
@@ -148,6 +150,7 @@ class Board():
         Returns a dict with keys:
             - passive   -> the passive moves for that piece
             - captures  -> the captures this piece can make
+            - attacks   -> the squares this piece attacks (controls)
             - defending -> the allied pieces this is defending
             - pin       -> the location of a pin this piece is exerting
 
@@ -157,6 +160,7 @@ class Board():
         results = {}
         results["passive"] = []
         results["captures"] = []
+        results["attacks"] = []
         results["defending"] = []
         results["pin"] = None
 
@@ -191,6 +195,9 @@ class Board():
                     if pinned == None: results["defending"].append(landed_on); break
                     # Stop looking if there is another piece before the king
                     else: break
+                elif allowed == self.ATTACKS and pinned == None: 
+                    # Store a pawns attacks in a separate list
+                    results["attacks"].append(landed_on); break
                 elif allowed == self.DISALLOWED:
                     break
 
@@ -231,7 +238,9 @@ class Board():
 
         # Get a flat list of the squares which are passively controlled by enemy pieces.
         opposing_passives = [attack for moves_dict in moves_without_king.values()\
-                                  for attack in moves_dict["passive"]]
+                                  for attack in moves_dict["passive"] + moves_dict["attacks"]]
+
+
         valid["passive"] = [i for i in candidates["passive"] if i not in opposing_passives]
 
         # Get a list of the pieces marked as defended and only keep the moves
@@ -364,11 +373,7 @@ class Board():
                 if isinstance(ml, list):
                     for i in ml:
                         moves_list.append(i)
-        # all_moves_list = [i \
-        #              for moves in all_moves.values() \
-        #              for m_type, move_list in moves.items() \
-        #              for i in move_list \
-        #              if m_type in move_types] 
+
         all_moves_list = moves_list
 
         if not all_moves_list: 
