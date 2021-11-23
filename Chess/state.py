@@ -132,15 +132,15 @@ class Board():
         passive_allowed = True
         if isinstance(piece, Pawn):
 
-            pos = piece.position
+            start_position = piece.position
             # The pieces start at either i=1 or i=6
             start = 1 if piece.colour == WHITE else 6
-            has_moved = bool(start - pos._i)
-            if pos._j - position._j != 0:
+            has_moved = bool(start - start_position._i)
+            if start_position._j - position._j != 0:
                 passive_allowed = False
-            if pos._j - position._j == 0:
+            if start_position._j - position._j == 0:
                 capture_allowed = False
-            if has_moved and pos._i - position._i in [2, -2]:
+            if has_moved and start_position._i - position._i in [2, -2]:
                 return self.DISALLOWED
 
         if position in self.loc_map.keys():
@@ -494,8 +494,6 @@ class Board():
     def move(self, mov: Move):
         """
         """
-        print(f"-------CURRENT TURN: {self._to_move}---------")
-
         moving_piece = self.loc_map[mov.start]
 
         new_piece = copy(moving_piece)
