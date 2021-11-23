@@ -132,7 +132,7 @@ class Board():
         passive_allowed = True
         if isinstance(piece, Pawn):
 
-            start_position = piece.position
+            start_position = self.piece_map[piece]
             # The pieces start at either i=1 or i=6
             start = 1 if piece.colour == WHITE else 6
             has_moved = bool(start - start_position._i)
@@ -188,7 +188,7 @@ class Board():
                 # a stop condition; capturing or moving onto an allied piece,
                 # or exiting the bounds of the board which will throw an InvalidFormat
                 # exception.
-                try: landed_on = piece.position + (dir * step)
+                try: landed_on = self.piece_map[piece] + (dir * step)
                 except InvalidFormat: break
                 
                                 
@@ -299,17 +299,21 @@ class Board():
         elif len(attackers) == 1:
             # Find the path of the attacking piece to the king
             # Only moves which intercept this path are allowed
-            path = attackers[0].position - king.position
+            path = self.piece_map[attackers[0]] - self.piece_map[king]
             piece_moves = self.__intersection(piece_moves, path)
         
         # Finally we resolve pins
         # Find the opposing piece pinning the allied piece (pinned_by, piece)
         opposing_moves = self.__find_move_set(self._get_opposing())
-        pinned_by = [enemy_piece for enemy_piece, moves in opposing_moves.items() if moves["pin"] == piece.position]
+        pinned_by = [
+            enemy_piece for enemy_piece, moves in opposing_moves.items()\
+            if moves["pin"] == self.piece_map[piece]
+        ]
+
         if pinned_by:
             # Update the moves to be only those which maintain the pin AND resolve the check.
             # Note a piece may only be pinned by one other since there is only one king...
-            path = pinned_by.pop().position - king.position
+            path = self.piece_map[pinned_by.pop()] - self.piece_map[king]
             piece_moves = self.__intersection(piece_moves, path) 
         
         return piece_moves
@@ -377,7 +381,10 @@ class Board():
         attacks = {piece: move_list["captures"] for piece, move_list in moves.items()}
 
         # Return a list of all the pieces which have the king as a valid attack
-        return [piece for piece, attack_list in attacks.items() if king.position in attack_list]
+        return [
+            piece for piece, attack_list in attacks.items()\
+            if self.piece_map[king] in attack_list
+        ]
 
     def _evaluate_mate(self) -> int:
         """_evaluate_mate.
@@ -388,10 +395,11 @@ class Board():
         """
         all_moves = self.get_move_set(self._get_moving())
         move_types = ["passive", "captures"]
+        breakpoint()
         moves_list = []
-        for m in all_moves.values():
-            for ml in m.values():
-                if isinstance(ml, list):
+        for all_piece_moves in all_moves.values():
+            for mk, ml in all_piece_moves.values():
+                if ml in move_types
                     for i in ml:
                         moves_list.append(i)
 
