@@ -7,6 +7,18 @@
   
 This project will implement Chess in Python, as well as providing functionality to evaluate the position the game is currently in, and suggest some good continuing moves.
 
+## Current progress
+- [x] Standard piece moves
+- [x] Game loop
+- [x] Checks
+- [x] Checkmate
+- [x] Stalemate
+- [ ] Three-fold repetition
+- [ ] 50-half move timeout
+- [ ] En-passant
+- [ ] Castling
+-
+
 ## Classes, functions, etc
 ```
 class ChessPiece

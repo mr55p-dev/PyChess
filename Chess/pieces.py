@@ -72,6 +72,14 @@ class Piece:
         """The maximum distance a piece can move"""
         return self._max_distance
 
+    @property
+    def is_active(self) ->  bool:
+        return self._is_active
+
+    @is_active.setter
+    def is_active(self, state) -> None:
+        self._is_active = state
+
     def capture(self) -> None:
         """Mark the piece as captured"""
         self._is_active = False

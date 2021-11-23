@@ -62,6 +62,17 @@ def create_piece(kind, colour, index):
         return Pawn(colour=colour, position=position)
 
 def pieces_from_fen(fen_string: str):
+    """pieces_from_fen.
+    Returns list containing:
+        (white_pieces, black_pieces)
+        next_turn
+        castle
+        en_passant
+        half_moves
+        n_moves
+    :param fen_string:
+    :type fen_string: str
+    """
     fields = fen_string.split(' ')
     if len(fields) != 6: raise ValueError("A FEN string must be space delimited with 6 arguments")
     
@@ -100,10 +111,10 @@ def pieces_from_fen(fen_string: str):
     en_passant = fields[3]
 
     # Halfmove clock 2 x moves since last pawn move or capture
-    half_moves = fields[4]
+    half_moves = int(fields[4])
 
     # Number of moves
-    n_moves = fields[5]
+    n_moves = int(fields[5])
 
     return [(white_pieces, black_pieces), next_turn, castle, en_passant, half_moves, n_moves]
 

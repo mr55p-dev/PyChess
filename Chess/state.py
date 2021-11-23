@@ -1,4 +1,4 @@
-import re
+import math
 from copy import copy
 from itertools import chain, repeat
 from typing import Dict, Tuple, List, Optional
@@ -50,6 +50,7 @@ class Board():
                  starting_position: gametype=new_game(),  # type: ignore
                  to_move: int = WHITE,
                  turn: int = 0,
+                 can_castle: str = "-",
                  other_fen_params = []) -> None:
         """__init__.
 
@@ -74,6 +75,7 @@ class Board():
         self._allowed_moves = None
 
         # This is just while castling and en-passant is not implemented
+        self._castle = self.__parse_castle(can_castle) # castle[4] : white kingside, queenside, black kingside, queenside
         self.other_FEN_params = other_fen_params
 
         self.calculate()
@@ -97,6 +99,19 @@ class Board():
         for loc, piece in self.loc_map.items():
             board[loc.i][loc.j] = piece.kind  # type: ignore
         return "\n".join([" ".join([cell for cell in row]) for row in board])
+
+    def __parse_castle(self, castle_str) -> List[bool]:
+        castling = [False, False, False, False]
+        if castle_str == "-": return castling
+
+        for i in castle_str:
+            if i == "K": castling[0]    = True
+            elif i == "Q": castling[1]  = True
+            elif i == "k": castling[2]  = True
+            elif i == "q": castling[3]  = True
+            
+        return castling
+
 
     def __allowed_move(self, position, piece):
         """__allowed_move.
@@ -301,19 +316,25 @@ class Board():
 
     def _get_moving(self) -> List[Piece]:
         """_get_moving.
-        Returns the pieces moving in this state.
+        Returns the active pieces moving in this state.
 
         :rtype: List[Piece]
         """
-        return self._white if self._to_move == WHITE else self._black  # type: ignore
+        if self._to_move == BLACK:
+            return [i for i in self._black if i.is_active]
+        else:
+            return [i for i in self._white if i.is_active]
 
     def _get_opposing(self) -> List[Piece]:
         """_get_opposing.
-        Returns the pieces not moving in this state.
+        Returns the active pieces not moving in this state.
 
         :rtype: List[Piece]
         """
-        return self._black if self._to_move == WHITE else self._white  # type: ignore
+        if self._to_move == WHITE:
+            return [i for i in self._black if i.is_active]
+        else:
+            return [i for i in self._white if i.is_active]
 
     def _get_king(self) -> King:
         """_get_king.
@@ -472,16 +493,10 @@ class Board():
 
     def move(self, mov: Move):
         """
-        d3
-        Bd3
-        Bad3
-        cxd3
-        Bxd3
         """
         print(f"-------CURRENT TURN: {self._to_move}---------")
 
         moving_piece = self.loc_map[mov.start]
-        print(f"matched {moving_piece} pieces")
 
         new_piece = copy(moving_piece)
         new_piece._position = mov.end
@@ -489,12 +504,12 @@ class Board():
         new_moving = self._get_moving()
         new_moving = [i for i in new_moving if i != moving_piece]
         new_moving.append(new_piece)
-        print("New moving pieces after applying change")
-        for i in new_moving: print(i)
 
         new_opposition = self._get_opposing()
         if mov.takes:
-            new_opposition = [i for i in new_opposition if i != self.loc_map[mov.end]]
+            captured = self.loc_map[mov.end]
+            idx = new_opposition.index(captured)
+            new_opposition[idx].is_active = False
 
         if self._to_move == WHITE:
             new_white = new_moving
@@ -508,7 +523,11 @@ class Board():
         next_moving = BLACK if self._to_move == WHITE else WHITE
         next_turn = int(self._turn) + 1
 
-        return Board((new_white, new_black), next_moving, next_turn)
+        castle_rep = ["K", "Q", "k", "q"]
+        can_castle = [v for i, v in enumerate(castle_rep) if self._castle[i]] 
+        can_castle = "".join(can_castle)
+
+        return Board((new_white, new_black), next_moving, next_turn, can_castle)
 
 
     def to_fen(self):
@@ -542,14 +561,13 @@ class Board():
         
         next_move = "w" if self._to_move == WHITE else 'b'
         fields.append(next_move)
-        
+
+        castle_rep = ["K", "Q", "k", "q"]
+        can_castle = [v for i, v in enumerate(castle_rep) if self._castle[i]] 
+
         # Since i am not ready to finish FEN we will add default data to the end
-        other_p = [str(i) for i in self.other_FEN_params]
-        # fields.append(str(other_p[0]))
-        # fields.append(str(other_p[1]))
-        # fields.append(str(other_p[2]))
-        fields.append("KQkq")
-        fields.append("-")
-        fields.append("0")
-        fields.append(str(self._turn))
+        fields.append("".join(can_castle))
+        fields.append("-") # En-passant right
+        fields.append(str(math.ceil(self._turn/2))) # Full move clock
+        fields.append(str(self._turn - 1)) # Half move clock ish...
         return " ".join(fields)
