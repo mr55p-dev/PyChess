@@ -278,6 +278,33 @@ class Board():
         Create something to watch 
         """
 
+        if king.color == WHITE:
+            castle_short = self._castle[0]
+            castle_long = self._castle[1]
+            short_rook = Position("H1")
+            long_rook = Position("A1")
+            except:
+
+        elif king.color == BLACK:
+            castle_short = self._castle[2]
+            castle_long = self._castle[3]
+            short_rook = Position("H8")
+            long_rook = Position("A8")
+        else: raise ValueError
+
+        castling_moves = []
+        if castle_short:
+            try: rook = self.loc_map[short_rook]
+            except KeyError: break
+            
+            # Find the squares from the king (inclusive) up to but not including the rook
+            # This way if the rook is attacked it doesnt matter.
+            path = rook - king
+            # Need to get all the controlled squares - imma go do some rewriting of 
+            # the entire state managment for get_moves since its rubbish right now.
+            set(path).symmetric_difference(set())
+            
+
         # Construct the same response as candidates
         valid["captures"] = [i for i in candidates["captures"] if i not in defended_pieces]
         valid["defending"] = []
