@@ -334,6 +334,22 @@ class Board():
         
         return piece_moves
 
+    def __update_piece(self, piece: Piece, new_position = None, is_active = None):
+        """__update_piece.
+        Updates properties of a given piece in the working state.
+
+        :param self:
+        :param piece:
+        :type piece: Piece
+        :param new_position:
+        :param is_active:
+        """
+        if isinstance(new_position, Position):
+            # Change this to just update the map in the future.
+            piece._position = new_position
+        if isinstance(is_active, bool):
+            piece.is_active = is_active
+
     def _get_moving(self) -> List[Piece]:
         """_get_moving.
         Returns the active pieces moving in this state.
@@ -515,40 +531,28 @@ class Board():
 
 
     def move(self, mov: Move):
+        """Runs a move in the current state. Takes a `Move` object.
+        This method does NOT implement full validity checks. Raises `InvalidStateChange` exception.
+
+        :param self:
+        :param mov:
+        :type mov: Move
         """
-        """
-        moving_piece = self.loc_map[mov.start]
+        try: moving_piece = self.loc_map[mov.start]
+        except KeyError: raise InvalidStateChange(f"Piece at {mov.start} not found")
+        self.__update_piece(moving_piece, new_position=mov.end)
 
-        new_piece = copy(moving_piece)
-        new_piece._position = mov.end
-
-        new_moving = self._get_moving()
-        new_moving = [i for i in new_moving if i != moving_piece]
-        new_moving.append(new_piece)
-
-        new_opposition = self._get_opposing()
+        # Remove captured pieces so they dont remain forever.
         if mov.takes:
             captured = self.loc_map[mov.end]
-            idx = new_opposition.index(captured)
-            new_opposition[idx].is_active = False
+            self.__update_piece(captured, is_active=False)
 
-        if self._to_move == WHITE:
-            new_white = new_moving
-            new_black = new_opposition
-        elif self._to_move == BLACK:
-            new_white = new_opposition
-            new_black = new_moving
-        else:
-            raise ValueError(f"We have a problem, self._turn = {self._to_move}")
+        self._to_move = BLACK if self._to_move == WHITE else WHITE
+        self._turn = self._turn + 1
 
-        next_moving = BLACK if self._to_move == WHITE else WHITE
-        next_turn = int(self._turn) + 1
+        # Call self.__check_castle()
 
-        castle_rep = ["K", "Q", "k", "q"]
-        can_castle = [v for i, v in enumerate(castle_rep) if self._castle[i]] 
-        can_castle = "".join(can_castle)
-
-        return Board((new_white, new_black), next_moving, next_turn, can_castle)
+        return True
 
 
     def to_fen(self):

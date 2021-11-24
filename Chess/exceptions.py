@@ -12,3 +12,6 @@ class InvalidPiece(ValueError):
 
 class InvalidStartingPosition(ValueError):
     pass
+
+class InvalidStateChange(ValueError):
+    pass

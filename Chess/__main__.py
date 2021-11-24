@@ -22,14 +22,16 @@ def ng():
     moves = ["a4", "a5", 
              "b4", "b5",
              "axb5", "c5",
-             "Nc3", "Nf6", ""]
+             "Nc3", "Nf6", 
+             "bxc5", "a4",
+             "Rxa4", ""]
 
     hist = []
     fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     board = construct_board(fen)
 
     for i in moves:
-        valid_moves = board.get_move_set(board._get_moving())
+        hist.append(copy(board))
         moving = "white" if board.to_move == WHITE else "black"
 
         print(board.to_fen())
@@ -37,16 +39,12 @@ def ng():
 
         view_board(board)
         move_str = i
-        try: 
-            move = move_from_str(move_str=move_str, board=board)
-        except ValueError: 
-            print("wrong.") 
+        move = move_from_str(move_str=move_str, board=board)
+
+        if board.move(move):
             continue
-
-        new_state = board.move(move)
-
-        hist.append(copy(board))
-        board = new_state
+        else:
+            raise Exception("invalid state woo")
 
 
 def ngi():
