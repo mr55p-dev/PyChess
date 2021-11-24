@@ -17,7 +17,6 @@ This project will implement Chess in Python, as well as providing functionality 
 - [ ] 50-half move timeout
 - [ ] En-passant
 - [ ] Castling
--
 
 ## Classes, functions, etc
 ```

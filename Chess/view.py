@@ -1,4 +1,4 @@
-from Chess.constants import WHITE
+from Chess.constants import BLACK, WHITE
 from Chess.state import Board
 
 
@@ -23,7 +23,38 @@ class bcolors:
 
 
 
-def view_board(board: Board, show_moves=None):
+def view_board_mono(board: Board, show_moves=None):
+    """Simple fuction to view a game state"""
+    representation = [["   " for _ in range(8)] for _ in range(8)]
+    count = 0
+    for loc, piece in board.loc_map.items():
+        rep = piece.kind
+        if piece.colour == BLACK: rep = piece.kind.lower()
+        representation[loc.i][loc.j] = f" {rep} "
+
+    if show_moves:
+        piece_moves = board.get_moves(show_moves)
+        for cap in piece_moves["captures"]:
+            # Make this a settext thing instead
+            representation[cap.i][cap.j] = " x "
+        for pas in piece_moves["passive"]:
+            representation[pas.i][pas.j] = " o "
+        print("PIECE MOVES")
+        print(piece_moves)
+        
+    # for i_ind, i in enumerate(representation):
+    #     for j_ind, _ in enumerate(i):
+    #         square = representation[i_ind][j_ind]
+    #         if (i_ind + count) % 2 == 0:
+    #             representation[i_ind][j_ind] = bcolors.WHITE_SQUARE + square + bcolors.ENDC
+    #         else:
+    #             representation[i_ind][j_ind] = bcolors.BLACK_SQUARE + square + bcolors.ENDC
+    #         count += 1
+
+
+    print("\n".join(["".join([cell for cell in row]) for row in representation[::-1]]))
+
+def view_board_colour(board: Board, show_moves=None):
     """Simple fuction to view a game state"""
     representation = [["   " for _ in range(8)] for _ in range(8)]
     count = 0

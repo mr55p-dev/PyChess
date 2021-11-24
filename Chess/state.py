@@ -262,6 +262,22 @@ class Board():
         # which are NOT in the defended list
         defended_pieces = [i for moves in moves_without_king.values() for i in moves["defending"]]
 
+        # Calculate castling moves.
+        """
+        1. Check right to castle string
+        1.1 Check if the king or rooks have moved.
+        2. If it has; break
+           If not: 
+            3. For each rook on the A and H files.
+                4. Find the squares from rook -> king (including king, excluding rook)
+                5. If any are attacked, disable
+                6. If not, add the move to passives. Do this as a move object with mov.castle = side
+        In move()
+        Check the castle property of move.
+        If not none: pass off to a handle_castle method.
+        Create something to watch 
+        """
+
         # Construct the same response as candidates
         valid["captures"] = [i for i in candidates["captures"] if i not in defended_pieces]
         valid["defending"] = []
@@ -395,12 +411,11 @@ class Board():
         """
         all_moves = self.get_move_set(self._get_moving())
         move_types = ["passive", "captures"]
-        breakpoint()
         moves_list = []
         for all_piece_moves in all_moves.values():
-            for mk, ml in all_piece_moves.values():
-                if ml in move_types
-                    for i in ml:
+            for move_key, move_list in all_piece_moves.items():
+                if move_key in move_types:
+                    for i in move_list:
                         moves_list.append(i)
 
         all_moves_list = moves_list
