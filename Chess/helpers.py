@@ -1,4 +1,5 @@
 import re
+from typing import List
 from Chess.coordinate import Move, Position
 from Chess.pieces import King, Piece, Queen, Rook, Knight, Bishop, Pawn
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
@@ -119,7 +120,7 @@ def pieces_from_fen(fen_string: str):
     return [(white_pieces, black_pieces), next_turn, castle, en_passant, half_moves, n_moves]
 
 
-def parse_match(move_repr):
+def parse_match(move_repr: List[str]):
     if move_repr[0] == '':
         piece = 'P'
     else:
@@ -160,7 +161,7 @@ def lookup_move(board, start, end, piece, takes):
     
     return board.piece_map[candidates[0]]
 
-def move_from_str(move_str, board):
+def move_from_str(move_str: str, board):
     pattern = r'([KQRNB])?([a-h]\d?)?(x)?([a-z]\d)$'
     matches = re.findall(pattern, move_str)
     print(matches)
@@ -169,7 +170,7 @@ def move_from_str(move_str, board):
     move_repr = matches[0]
     
     start, end, piece, takes = parse_match(move_repr)
-    if len(start) != 2: start = lookup_move(board, start, end, piece, takes)
+    if not isinstance(start, Position): start = lookup_move(board, start, end, piece, takes)
 
     return Move(start, end, takes)
     

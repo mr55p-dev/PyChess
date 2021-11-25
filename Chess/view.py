@@ -33,7 +33,7 @@ def view_board_mono(board: Board, show_moves=None):
         representation[loc.i][loc.j] = f" {rep} "
 
     if show_moves:
-        piece_moves = board.get_moves(show_moves)
+        piece_moves = board.legal_moves(show_moves)
         for cap in piece_moves["captures"]:
             # Make this a settext thing instead
             representation[cap.i][cap.j] = " x "
@@ -63,7 +63,7 @@ def view_board_colour(board: Board, show_moves=None):
         representation[loc.i][loc.j] = f"{prefix} {piece.kind} {bcolors.ENDC}"
 
     if show_moves:
-        piece_moves = board.get_moves(show_moves)
+        piece_moves = board.legal_moves(show_moves)
         for cap in piece_moves["captures"]:
             # Make this a settext thing instead
             representation[cap.i][cap.j] = " \u2715 "

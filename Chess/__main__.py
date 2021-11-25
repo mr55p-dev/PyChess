@@ -20,11 +20,11 @@ def game_end(board: Board):
 def ng():
     view_board = view_board_mono
     hist = []
-    # fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" Initial
-    fen = "rnb1k1nr/pppp1ppp/8/8/PP6/8/4PPPP/RNq1KBNR w kq - 0 1" # Checkmate
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" # Initial
+    # fen = "rnb1k1nr/pppp1ppp/8/8/PP6/8/4PPPP/RNq1KBNR w kq - 0 1" # Checkmate
     board = construct_board(fen)
 
-    for i in [1]:
+    for i in ["d4", "e5", "dxe5", "Nf6", "Nc3", "d5", "e4", "dxe4"]:
         hist.append(copy(board))
         moving = "white" if board.to_move == WHITE else "black"
 
@@ -42,7 +42,7 @@ def ng():
 
 
 def ngi():
-    view_board = view_board_mono
+    view_board = view_board_colour
     hist = []
     # fen = input("FEN: ")
     fen = None

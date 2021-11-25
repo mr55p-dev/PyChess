@@ -183,9 +183,9 @@ class Move():
         self._to = to
         self._takes = takes
 
-    @property
-    def piece(self) -> str:
-        return self._piece
+    # @property
+    # def piece(self) -> str:
+    #     return self._piece
 
     @property
     def start(self) -> Position:
@@ -204,7 +204,7 @@ class ResultSet(MutableMapping):
     PROTOTYPE_STORE = {
                 "passive": [],
                 "captures": [],
-                "attacks: [],
+                "attacks": [],
                 "defending": [],
                 "pin": []
             }

@@ -8,5 +8,5 @@
 
 from Chess.__main__ import ngi, ng
 
-# ngi()
-ng()
+ngi()
+# ng()
