@@ -1,12 +1,16 @@
-# from Chess.constants import BLACK, PIECE_TYPES, WHITE
-# from Chess.helpers import pieces_from_fen
-# from Chess.__main__ import construct_board
-# from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook 
-# from Chess.state import Board
-# from Chess.coordinate import Position, Vec
-# from Chess.view import view_board
+from Chess.__main__ import construct_board
+from Chess.helpers import move_from_str
+from Chess.view import view_board_mono
 
-from Chess.__main__ import ngi, ng
+fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+moves = ["d4", "e5",
+         "c4", "exd4",
+         "Nc3", "Nf6",
+         "Bf5"]
 
-ngi()
-# ng()
+board = construct_board(fen)
+for move in moves:
+    view_board_mono(board)
+    move_obj = move_from_str(move, board)
+    board.move(move_obj)
+

@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 from Chess.constants import BLACK, WHITE
 from Chess.coordinate import Move, Position, ResultSet
-from Chess.exceptions import InvalidFormat, InvalidStateChange
+from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
 from Chess.pieces import King, Piece
 

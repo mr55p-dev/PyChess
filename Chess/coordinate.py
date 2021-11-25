@@ -308,7 +308,7 @@ class ResultSet(MutableMapping):
     def piece_defending(self, key):
         return self[key][self.DEFEND]
 
-    def by_type(self, key) -> Dict:
+    def by_kind_str(self, key) -> Dict:
         """takes "passive", "attacks", "captures", "defends", "pin" """
         return {piece: moves[key] for piece, moves in self.store.items()}
 
@@ -351,6 +351,11 @@ class ResultSet(MutableMapping):
         for key in self.store.keys():
             self.store[key] = self.PROTOTYPE_STORE
 
+    def filter_all(self, test: Callable) -> None:
+        map(self.filter, self.store.keys(), repeat(test))
+        for key in self.store:
+            self.filter(key, test)
+
     def filter(self, key, test: Callable) -> None:
         # Performs a filter in place
         # Get the passive and capture values (only legit moves)
@@ -365,10 +370,5 @@ class ResultSet(MutableMapping):
         passive = [i[0] for i in zip(passive, passive_mask) if i[1]]
         capture = [i[0] for i in zip(capture, capture_mask) if i[1]]
 
-
-
-
-
-
-
-
+    def by_kind_str(self, piece: str):
+        return {p: self.store[p] for p in self.store if p.kind == piece)}

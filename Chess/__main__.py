@@ -3,7 +3,7 @@ from Chess.constants import WHITE
 from Chess.helpers import move_from_str, pieces_from_fen
 from Chess.state import Board  # type: ignore
 from Chess.view import view_board_mono, view_board_colour  # type: ignore
-from Chess.coordinate import Position, Vec # type: ignore
+from Chess.coordinate import Position # type: ignore
 
 
 def construct_board(fen):
@@ -17,43 +17,15 @@ def game_end(board: Board):
     else:
         return False
 
-def ng():
-    view_board = view_board_mono
-    hist = []
-    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" # Initial
-    # fen = "rnb1k1nr/pppp1ppp/8/8/PP6/8/4PPPP/RNq1KBNR w kq - 0 1" # Checkmate
-    board = construct_board(fen)
-
-    for i in ["d4", "e5", "dxe5", "Nf6", "Nc3", "d5", "e4", "dxe4"]:
-        hist.append(copy(board))
-        moving = "white" if board.to_move == WHITE else "black"
-
-        print(board.to_fen())
-        print(f"Turn {board.turn} - {moving} to move.")
-
-        view_board(board)
-        move_str = i
-        move = move_from_str(move_str=move_str, board=board)
-
-        if board.move(move):
-            continue
-        else:
-            raise Exception("invalid state woo")
-
-
-def ngi():
+def new_game_interactive():
     view_board = view_board_colour
     hist = []
-    # fen = input("FEN: ")
-    fen = None
-    if not fen: fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     board = construct_board(fen)
     
     while not game_end(board):
         hist.append(copy(board))
-        moving = "white" if board.to_move == WHITE else "black"
-
-        print(f"Turn {board.turn} - {moving} to move.")
+        print(f"Turn {board.turn} - {'w' if board.to_move else 'b'} to move.")
         view_board(board)
 
         complete = False
@@ -67,5 +39,5 @@ def ngi():
 
 if __name__ == "__main__":
             
-    ng()
+    new_game_interactive()
 

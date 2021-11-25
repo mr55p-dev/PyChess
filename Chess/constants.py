@@ -1,5 +1,5 @@
-WHITE = 1
-BLACK = 0
+WHITE = True
+BLACK = False
 
 CART_COORD = range(0, 8)
 RANKS = range(1, 9)
