@@ -19,18 +19,12 @@ def game_end(board: Board):
 
 def ng():
     view_board = view_board_mono
-    moves = ["a4", "a5", 
-             "b4", "b5",
-             "axb5", "c5",
-             "Nc3", "Nf6", 
-             "bxc5", "a4",
-             "Rxa4", ""]
-
     hist = []
-    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    # fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" Initial
+    fen = "rnb1k1nr/pppp1ppp/8/8/PP6/8/4PPPP/RNq1KBNR w kq - 0 1" # Checkmate
     board = construct_board(fen)
 
-    for i in moves:
+    for i in [1]:
         hist.append(copy(board))
         moving = "white" if board.to_move == WHITE else "black"
 
@@ -48,28 +42,28 @@ def ng():
 
 
 def ngi():
-        hist = []
-        fen = input("FEN: ")
-        if not fen: fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-        board = construct_board(fen)
-        
-        while not game_end(board):
-            valid_moves = board.get_move_set(board._get_moving())
-            moving = "white" if board.to_move == WHITE else "black"
-            new_state = None
-            while not new_state:
-                print(board.to_fen())
-                print(f"Turn {board.turn} - {moving} to move.")
-                view_board(board)
-                # move_str = input("Enter a move> ")
-                move_str = "a4"
-                try: move = move_from_str(move_str=move_str, board=board)
-                except ValueError: print("wrong."); continue
+    view_board = view_board_mono
+    hist = []
+    # fen = input("FEN: ")
+    fen = None
+    if not fen: fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    board = construct_board(fen)
+    
+    while not game_end(board):
+        hist.append(copy(board))
+        moving = "white" if board.to_move == WHITE else "black"
 
-                new_state = board.move(move)
+        print(f"Turn {board.turn} - {moving} to move.")
+        view_board(board)
 
-            hist.append(copy(board))
-            board = new_state
+        complete = False
+        while not complete:
+            move_str = input("Enter a move> ")
+            try: move = move_from_str(move_str=move_str, board=board)
+            except ValueError: print("wrong."); continue
+
+            complete = board.move(move)
+
 
 if __name__ == "__main__":
             

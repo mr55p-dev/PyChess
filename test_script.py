@@ -6,6 +6,7 @@
 # from Chess.coordinate import Position, Vec
 # from Chess.view import view_board
 
-from Chess.__main__ import ng
+from Chess.__main__ import ngi, ng
 
+# ngi()
 ng()

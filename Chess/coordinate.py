@@ -128,6 +128,13 @@ class Position:
         return Position((self._i - o.i, self._j - o.j))
 
     def path_to(self, o) -> List['Position']:
+        """path_to. Calculates the squares from this position to another position.
+        Given `a.path_to(b)` the position of `a` will be included, but not the position of `b`
+
+        :param self:
+        :param o:
+        :rtype: List['Position']
+        """
         sign = lambda x: int(math.copysign(1, x))
         di = o._i - self._i
         dj = o._j - self._j
