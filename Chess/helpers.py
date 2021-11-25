@@ -140,7 +140,7 @@ def parse_match(move_repr):
     return (start, end, piece, takes)
 
 def lookup_move(board, start, end, piece, takes):
-    moves = board.allied_moves()
+    moves = board.allied_moves
 
     # Filter out only the pieces of correct kind.
     filt = {board_piece: move for board_piece, move in moves.items() if board_piece.kind == piece}

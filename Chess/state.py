@@ -1,11 +1,9 @@
 import math
-from copy import copy
-from itertools import chain, repeat
 from typing import Dict, Tuple, List, Optional
-from Chess.constants import BLACK, RANKS, WHITE
-from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook
-from Chess.coordinate import Move, Position
-from Chess.exceptions import InvalidFormat
+from Chess.constants import BLACK, WHITE
+from Chess.pieces import King, Pawn, Piece
+from Chess.coordinate import Move, Position, ResultSet
+from Chess.exceptions import InvalidFormat, InvalidStateChange
 from Chess.helpers import new_game
 
 class Board():
@@ -69,10 +67,10 @@ class Board():
         self._opposition = WHITE if to_move == BLACK else BLACK
 
         # Setup properties which we will later bind in the `calculate` function
-        self._is_check = None
-        self._is_mate = None
-        self._evaluation = None
-        self._allowed_moves = None
+        self._is_check = [] 
+        self._is_mate = False
+        self._evaluation = 0
+        self._allowed_moves = ResultSet()
 
         # This is just while castling and en-passant is not implemented
         self._castle = self.__parse_castle(can_castle) # castle[4] : white kingside, queenside, black kingside, queenside
@@ -165,7 +163,7 @@ class Board():
         Returns a dict with keys:
             - passive   -> the passive moves for that piece
             - captures  -> the captures this piece can make
-            - attacks   -> the squares this piece attacks (controls)
+            - attacks   -> the squares this piece attacks (controls) WITHOUT being able to move to them
             - defending -> the allied pieces this is defending
             - pin       -> the location of a pin this piece is exerting
 
@@ -178,6 +176,7 @@ class Board():
         results["attacks"] = []
         results["defending"] = []
         results["pin"] = None
+
 
         for dir in piece.projections:
             # Iterate over all the directions a piece can move in
@@ -197,7 +196,9 @@ class Board():
                     if pinned == None: results["passive"].append(landed_on)
                 elif allowed == self.CAPTURE:
                     # Store a capture if we are not looking for a pin
-                    if pinned == None: results["captures"].append(landed_on); pinned = landed_on
+                    if pinned == None: 
+                        results["captures"].append(landed_on) 
+                        pinned = self.loc_map[landed_on]
                     # Stop looking for a pin if we encounter a piece that isnt the king
                     else: break
                 elif allowed == self.CHECKING_ATTACK:
@@ -217,15 +218,6 @@ class Board():
                     break
 
         return results
-
-    def __find_move_set(self, pieces: List[Piece]):
-        """__find_move_set.
-        Wrapper for __find_moves which gives a dict of all the moves for a list of pieces.
-
-        :param pieces:
-        """
-        move_list = map(self.__find_moves, pieces)
-        return {piece: moves for piece, moves in zip(pieces, move_list)}
 
     def __find_king_moves(self, king):
         """__find_king_moves.
@@ -248,19 +240,17 @@ class Board():
         temp_king = moving_pieces.pop(king_index)
         
         # Calculate the moves for the enemy pieces without the king there
-        moves_without_king = self.__find_move_set(self._get_opposing())
+        moves_without_king = self.__find_move_set(self._get_opposing(), king_evaluation=False)
         moving_pieces.insert(king_index, temp_king)
 
         # Get a flat list of the squares which are passively controlled by enemy pieces.
-        opposing_passives = [attack for moves_dict in moves_without_king.values()\
-                                  for attack in moves_dict["passive"] + moves_dict["attacks"]]
-
-
+        opposing_passives = moves_without_king.all_valid
         valid["passive"] = [i for i in candidates["passive"] if i not in opposing_passives]
 
         # Get a list of the pieces marked as defended and only keep the moves
         # which are NOT in the defended list
-        defended_pieces = [i for moves in moves_without_king.values() for i in moves["defending"]]
+        defended_pieces = moves_without_king.defended
+        valid["captures"] = [i for i in candidates["captures"] if i not in defended_pieces]
 
         # Calculate castling moves.
         """
@@ -278,14 +268,13 @@ class Board():
         Create something to watch 
         """
 
-        if king.color == WHITE:
+        if king.colour == WHITE:
             castle_short = self._castle[0]
             castle_long = self._castle[1]
             short_rook = Position("H1")
             long_rook = Position("A1")
-            except:
 
-        elif king.color == BLACK:
+        elif king.colour == BLACK:
             castle_short = self._castle[2]
             castle_long = self._castle[3]
             short_rook = Position("H8")
@@ -293,20 +282,19 @@ class Board():
         else: raise ValueError
 
         castling_moves = []
-        if castle_short:
-            try: rook = self.loc_map[short_rook]
-            except KeyError: break
-            
-            # Find the squares from the king (inclusive) up to but not including the rook
-            # This way if the rook is attacked it doesnt matter.
-            path = rook - king
-            # Need to get all the controlled squares - imma go do some rewriting of 
-            # the entire state managment for get_moves since its rubbish right now.
-            set(path).symmetric_difference(set())
-            
-
+#         if castle_short:
+#             try: rook = self.loc_map[short_rook]
+#             except KeyError: rook = None
+#             
+#             # Find the squares from the king (inclusive) up to but not including the rook
+#             # This way if the rook is attacked it doesnt matter.
+#             path = rook - king
+#             # Need to get all the controlled squares - imma go do some rewriting of 
+#             # the entire state managment for get_moves since its rubbish right now.
+#             # set(path).symmetric_difference(set())
+#             
+# 
         # Construct the same response as candidates
-        valid["captures"] = [i for i in candidates["captures"] if i not in defended_pieces]
         valid["defending"] = []
         valid["pin"] = None
         return valid
@@ -342,12 +330,13 @@ class Board():
         elif len(attackers) == 1:
             # Find the path of the attacking piece to the king
             # Only moves which intercept this path are allowed
-            path = self.piece_map[attackers[0]] - self.piece_map[king]
+            attacker = attackers.pop()
+            path = self.piece_map[attacker].path_to(self.piece_map[king])
             piece_moves = self.__intersection(piece_moves, path)
         
         # Finally we resolve pins
         # Find the opposing piece pinning the allied piece (pinned_by, piece)
-        opposing_moves = self.__find_move_set(self._get_opposing())
+        opposing_moves = self.get_move_set(self._get_opposing())
         pinned_by = [
             enemy_piece for enemy_piece, moves in opposing_moves.items()\
             if moves["pin"] == self.piece_map[piece]
@@ -356,7 +345,7 @@ class Board():
         if pinned_by:
             # Update the moves to be only those which maintain the pin AND resolve the check.
             # Note a piece may only be pinned by one other since there is only one king...
-            path = self.piece_map[pinned_by.pop()] - self.piece_map[king]
+            path = self.piece_map[pinned_by.pop()].path_to(self.piece_map[king])
             piece_moves = self.__intersection(piece_moves, path) 
         
         return piece_moves
@@ -408,7 +397,7 @@ class Board():
         return [i for i in self._get_moving() if isinstance(i, King)].pop()
 
     def __intersection(self, 
-                      moves: Dict[str, List[Position]], 
+                      moves: ResultSet, 
                       by: List[Position]
                       ) -> Dict[str, List[Position]]:
         """_filter_moves.
@@ -433,11 +422,14 @@ class Board():
 
         :rtype: List[Optional[Piece]]
         """
-        moves = self.__find_move_set(self._get_opposing())
+        moves = self.__find_move_set(self._get_opposing(), king_evaluation=False)
         king = self._get_king()
 
         # Extract all the attacks from the move
-        attacks = {piece: move_list["captures"] for piece, move_list in moves.items()}
+        captures = moves.by_type("captures")
+        # attacks = {piece: move_list["captures"] for piece, move_list in moves.items()}
+        captures = filter(lambda x: self.piece_map[king] in x[1], captures.items())
+        return [i[0] for i in captures]
 
         # Return a list of all the pieces which have the king as a valid attack
         return [
@@ -452,16 +444,16 @@ class Board():
 
         :rtype: int
         """
-        all_moves = self.get_move_set(self._get_moving())
-        move_types = ["passive", "captures"]
-        moves_list = []
-        for all_piece_moves in all_moves.values():
-            for move_key, move_list in all_piece_moves.items():
-                if move_key in move_types:
-                    for i in move_list:
-                        moves_list.append(i)
+        # move_types = ["passive", "captures"]
+        # moves_list = []
+        all_moves = self.__find_move_set(self._get_moving(), king_evaluation=True)
+        # for all_piece_moves in all_moves.values():
+        #     for move_key, move_list in all_piece_moves.items():
+        #         if move_key in move_types:
+        #             for i in move_list:
+        #                 moves_list.append(i)
 
-        all_moves_list = moves_list
+        all_moves_list = all_moves.all_valid
 
         if not all_moves_list: 
             if self.is_check: return self.CHECKMATE
@@ -471,6 +463,16 @@ class Board():
     def _evaluate_score(self):
         """_evaluate_score."""
         pass
+
+
+    def __find_move_set(self, pieces: list[Piece], king_evaluation):
+        results = ResultSet()
+        for piece, moves in zip(pieces, list(map(self.__find_moves, pieces))):
+            results[piece] = moves
+        if king_evaluation:
+            king = [i for i in pieces if isinstance(i, King)].pop() #If this fails then theres no king...
+            results[king] = self.__find_king_moves(king)
+        return results
 
     def get_moves(self, piece: Piece):
         """get_moves.
@@ -487,23 +489,16 @@ class Board():
             return self.__find_king_moves(piece)
         return self.__filter_moves(piece)
 
-    def get_move_set(self, pieces: list[Piece]):
+    def get_move_set(self, pieces: list[Piece]) -> ResultSet:
         """get_move_set.
         Wrapper to get a set of moves instead of just those for a singular piece
-        Returns a dict[Piece: moves] where moves is the return type of self.get_moves
 
+        :param self:
         :param pieces:
         :type pieces: list[Piece]
+        :rtype: ResultSet
         """
-        return {piece: moves for piece, moves in zip(pieces, list(map(self.get_moves, pieces)))}
-    
-    def allied_moves(self):
-        pieces = self._get_moving()
-        return {piece: moves for piece, moves in zip(pieces, list(map(self.get_moves, pieces)))}
-
-    def opposing_moves(self):
-        pieces = self._get_opposing()
-        return {piece: moves for piece, moves in zip(pieces, list(map(self.get_moves, pieces)))}
+        return self.__find_move_set(pieces, king_evaluation=True)
 
     @property
     def loc_map(self):
@@ -528,7 +523,7 @@ class Board():
         return self._black + self._white
 
     @property
-    def is_check(self) -> Optional[List[Piece]]:
+    def is_check(self) -> List[Optional[Piece]]:
         return self._is_check
 
     @property
@@ -544,9 +539,13 @@ class Board():
         """to_move."""
         return self._to_move
 
+    @property
+    def allied_moves(self) -> ResultSet:
+        return self.__find_move_set(self._get_moving(), king_evaluation=True)
+
     def calculate(self):
         # Work out if the current state is check?
-        self._is_check = bool(self._evaluate_check()) 
+        self._is_check = self._evaluate_check() 
 
         mate = self._evaluate_mate()
         if mate == self.CHECKMATE: self._is_mate = True; self._is_stale = False
@@ -584,7 +583,7 @@ class Board():
 
     def to_fen(self):
         fields = []
-        ranks = [["" for i in range(8)] for _ in range(8)]
+        ranks = [["" for _ in range(8)] for _ in range(8)]
         # The rank of a piece will be calculated as 7 - i; 
         # In FEN the 8th rank (list index 7) is at i=0
         for position, piece in self.loc_map.items():
