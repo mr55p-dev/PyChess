@@ -1,7 +1,7 @@
-from itertools import product
+from typing import List
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
 from Chess.coordinate import Position, Vec
-from Chess.exceptions import InvalidPiece, InvalidStartingPosition
+from Chess.exceptions import InvalidPiece
 
 class Piece:
     """
@@ -84,10 +84,10 @@ class Piece:
         """Mark the piece as captured"""
         self._is_active = False
 
-    @staticmethod
-    def projections():
+    @property
+    def projections(self) -> List[Vec]:
         """A list of the directions that the piece can move in."""
-        pass
+        return [Vec(1,1)]
 
 
     @staticmethod

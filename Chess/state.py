@@ -1,5 +1,5 @@
 import math
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from Chess.constants import BLACK, WHITE
 from Chess.coordinate import Move, Position, ResultSet
@@ -8,31 +8,7 @@ from Chess.helpers import new_game
 from Chess.pieces import King, Piece
 
 class Board():
-    """Contains a state of the board"""
-    """
-	Representation for the game.
-	Stores the "active" and "inactive" (captured) pieces,
-	the valid continuations (only moves which will not put the king in check)
-	and the next piece to move.
-
-	:param white_active:	[ChessPiece]
-	:param black_active:	[ChessPiece]
-							List of the active pieces for each side
-	:attr to_move: 			White|Black
-	:attr is_check: 		bool
-	:attr is_mate: 			bool
-	:attr evaluation: 		int
-							The material evaluation (difference in value between active pieces)
-	:method calc_moves: 	ChessMove
-							All the valid moves for each piece
-	:method do_move
-		:param move_from: 	Piece starting position
-		:param move_to: 	Piece ending position
-		:returns: 			ChessBoard
-	:method best_move: 		ChessMove
-							The best continuting move (based on pieces which can be captured).
-
-    """
+    # Static attributes
     BLOCKED         = 0
     CAPTURE         = 1
     EMPTY           = 2
@@ -51,13 +27,7 @@ class Board():
                  turn: int = 0,
                  can_castle: str = "-",
                  other_fen_params = []) -> None:
-        """__init__.
 
-        :param starting_position:
-        :param to_move:
-        :type to_move: int
-        :rtype: None
-        """
         # Store the fen information gi en and piece representations
         # Construct a map of location: piece
         self._white, self._black = starting_position
@@ -79,24 +49,19 @@ class Board():
 
         self.calculate()
 
-    def __hash__(self) -> int:
-        """__hash__.
-        Allow the game state to be stored in a hashmap
-
-        :rtype: int
-        """
-        return hash(self.to_fen())
+    # def __hash__(self) -> int:
+    #     return hash(self.to_fen())
 
     def __repr__(self) -> str:
         """__repr__.
-        Provide a very basic string representation of the board.
+        Provide a basic string representation of the board.
 
         :rtype: str
         """
 
         board = [[" " for _ in range(8)] for _ in range(8)]
         for loc, piece in self.loc_map.items():
-            board[loc.i][loc.j] = piece.kind  
+            board[loc.i][loc.j] = piece.kind
         return "\n".join([" ".join([cell for cell in row]) for row in board])
 
     def __parse_castle(self, castle_str) -> List[bool]:
@@ -112,11 +77,9 @@ class Board():
         return castling
 
 
-    def __allowed_move(self, position, piece):
+    def __allowed_move(self, position, piece) -> int:
         """__allowed_move.
         Decides if a move is valid and what type of move it is if so.
-        Also expanded to tell if a piece is checking the king, or if it is defending
-        another piece.
 
         Returns self.EMPTY if a move is allowed
         Returns self.BLOCKED if a move is blocked by an allied piece
@@ -156,7 +119,7 @@ class Board():
             elif capture_allowed: return self.ATTACKS
             else: return self.DISALLOWED
 
-    def __psuedolegal_moves(self, pieces: List[Piece]): 
+    def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         results = ResultSet(pieces)
         for piece in pieces:
             results[piece] = ResultSet.PROTOTYPE_STORE
@@ -176,7 +139,7 @@ class Board():
                         if pinned == None: results[piece]["passive"].append(landed_on)
                     elif allowed == self.CAPTURE:
                         # Store a capture if we are not looking for a pin
-                        if pinned == None: 
+                        if pinned == None:
                             results[piece][ResultSet.CAPTURE].append(landed_on) 
                             pinned = self.loc_map[landed_on]
                         # Stop looking for a pin if we encounter a piece that isnt the king
@@ -198,18 +161,8 @@ class Board():
                         break
 
         return results
-       
-    def __filter_moves(self, results: ResultSet):
-        """__filter_moves.
-        Will filter out illegal moves from __find_moves(piece).
-        Following the procedure:
-        1. If there is more than one piece delivering check then only the king may move.
-        2. If there is exactly one piece delivering check then pieces may only move to resolve
-            the check.
-        3. If a piece is pinned to the king then it may not move in any way to cause check on its
-            own king.
-        These rules are used to filter out the space of valid moves sequentially.
-        """
+     
+    def __filter_moves(self, results: ResultSet) -> ResultSet:
         # Fetches enemy psuedolegal moves and returns attacking pieces
         attackers = self.__evaluate_check()
         king = self.__get_king()
@@ -257,16 +210,12 @@ class Board():
 
         return results
 
-    def __update_piece(self, piece: Piece, new_position = None, is_active = None):
-        """__update_piece.
-        Updates properties of a given piece in the working state.
+    def __update_piece(self,
+                       piece: Piece,
+                       new_position = None,
+                       is_active = None
+                       ) -> None:
 
-        :param self:
-        :param piece:
-        :type piece: Piece
-        :param new_position:
-        :param is_active:
-        """
         if isinstance(new_position, Position):
             # Change this to just update the map in the future.
             piece._position = new_position
@@ -274,26 +223,14 @@ class Board():
             piece.is_active = is_active
 
     def __get_king(self) -> King:
-        """_get_king.
-        Returns the king of the side moving this turn.
-
-        :rtype: King
-        """
         return [i for i in self.moving if isinstance(i, King)].pop()
 
     def __evaluate_check(self) -> List[Optional[Piece]]:
-        """_evaluate_check.
-        Evaluates if the current position is check.
-        Returns a list of all the pieces which currently attack the king.
-
-        :rtype: List[Optional[Piece]]
-        """
         moves = self.__psuedolegal_moves(self.opposing)
         king = self.__get_king()
 
         # Extract all the attacks from the move
         captures = moves.by_type("captures")
-        # attacks = {piece: move_list["captures"] for piece, move_list in moves.items()}
         captures = filter(lambda x: self.piece_map[king] in x[1], captures.items())
         return [i[0] for i in captures]
 
@@ -331,7 +268,7 @@ class Board():
         # Filter the moves 
         return self.__filter_moves(psl)
 
-    def calculate(self):
+    def calculate(self) -> None:
         # Work out if the current state is check?
         self._is_check = self.__evaluate_check() 
 
@@ -344,7 +281,7 @@ class Board():
         self._allowed_moves = self.legal_moves(self.moving)
 
 
-    def move(self, mov: Move):
+    def move(self, mov: Move) -> bool:
         """Runs a move in the current state. Takes a `Move` object.
         This method does NOT implement full validity checks. Raises `InvalidStateChange` exception.
 
@@ -353,7 +290,7 @@ class Board():
         :type mov: Move
         """
         try: moving_piece = self.loc_map[mov.start]
-        except KeyError: raise InvalidStateChange(f"Piece at {mov.start} not found")
+        except KeyError: return False
         self.__update_piece(moving_piece, new_position=mov.end)
 
         # Remove captured pieces so they dont remain forever.
@@ -364,12 +301,10 @@ class Board():
         self._to_move = BLACK if self._to_move == WHITE else WHITE
         self._turn = self._turn + 1
 
-        # Call self.__check_castle()
-
         return True
 
 
-    def to_fen(self):
+    def to_fen(self) -> str:
         fields = []
         ranks = [["" for _ in range(8)] for _ in range(8)]
         # The rank of a piece will be calculated as 7 - i; 
@@ -435,11 +370,11 @@ class Board():
         else:
             return [i for i in self._white if i.is_active]
     @property
-    def loc_map(self):
+    def loc_map(self) -> Dict[Position, Piece]:
         return { piece.position: piece for piece in self.moving + self.opposing }
     
     @property
-    def piece_map(self):
+    def piece_map(self) -> Dict[Piece, Position]:
         return { piece: piece.position for piece in self.moving + self.opposing }
 
     @property 
@@ -469,7 +404,7 @@ class Board():
         return self._is_stale
     
     @property
-    def to_move(self):
+    def to_move(self) -> int:
         """to_move."""
         return self._to_move
 
