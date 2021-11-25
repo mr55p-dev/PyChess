@@ -1,7 +1,7 @@
 from collections.abc import MutableMapping
 import re
 from itertools import repeat
-from typing import ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Callable, ClassVar, Dict, List, Optional, Tuple, Union
 import math
 import Chess.constants as cons
 from Chess.exceptions import InvalidFormat, InvalidVector
@@ -201,19 +201,31 @@ class Move():
 
 
 class ResultSet(MutableMapping):
+    PROTOTYPE_STORE = {
+                "passive": [],
+                "captures": [],
+                "attacks: [],
+                "defending": [],
+                "pin": []
+            }
+    PASSIVE = "passive"
+    CAPTURE = "captures"
+    ATTACK  = "attacks"
+    DEFEND  = "defending"
+    PIN     = "pin"
     """Object to store results in
 
     Default implementation of MutableMapping from https://stackoverflow.com/questions/3387691/how-to-perfectly-override-a-dict"""
-    def __init__(self, *args, **kwargs):
-        self.store = dict()
-        self.update(dict(*args, **kwargs))
+    def __init__(self, pieces = [], *args, **kwargs):
+        # Setup a default dict of all the pieces being represented.
+        self.store = {piece: self.PROTOTYPE_STORE for piece in pieces}
+        # Initalise the cached values
         self.all = []
-        
         self.passive = []
         self.capture = []
         self.attacks = []
         self.defended = []
-        self.pins = {}
+        self.pins = []
 
     def __getitem__(self, key):
         return self.store[self._keytransform(key)]
@@ -242,8 +254,8 @@ class ResultSet(MutableMapping):
         # Very basic cachening
         self.all = []
         for _, moves in self.store.items():
-            [self.all.append(i) for i in moves["passive"]]
-            [self.all.append(i) for i in moves["captures"]]
+            [self.all.append(i) for i in moves[self.PASSIVE]]
+            [self.all.append(i) for i in moves[self.CAPTURE]]
         return self.all
 
     @property
@@ -253,7 +265,7 @@ class ResultSet(MutableMapping):
 
         self.passive = []
         for _, moves in self.store.items():
-            [self.passive.append(i) for i in moves["passive"]]
+            [self.passive.append(i) for i in moves[self.PASSIVE]]
         return self.passive
 
     @property
@@ -263,7 +275,7 @@ class ResultSet(MutableMapping):
 
         self.capture = []
         for _, moves in self.store.items():
-            [self.passive.append(i) for i in moves["captures"]]
+            [self.passive.append(i) for i in moves[self.CAPTURE]]
         return self.capture
 
     @property
@@ -273,7 +285,7 @@ class ResultSet(MutableMapping):
 
         self.attacks = []
         for _, moves in self.store.items():
-            [self.attacks.append(i) for i in moves["attacks"]]
+            [self.attacks.append(i) for i in moves[self.ATTACK]]
         return self.attacks
 
     @property
@@ -283,18 +295,18 @@ class ResultSet(MutableMapping):
 
         self.defended = []
         for _, moves in self.store.items():
-            [self.defended.append(i) for i in moves["defending"]]
+            [self.defended.append(i) for i in moves[self.DEFEND]]
         return self.defended
 
     def piece_valid(self, key):
         """Get all the valid moves for a piece"""
         piece_results = self[key]
-        passive = piece_results["passive"]
-        captures = piece_results["captures"]
+        passive = piece_results[self.PASSIVE]
+        captures = piece_results[self.CAPTURE]
         return passive + captures
 
     def piece_defending(self, key):
-        return self[key]["defending"]
+        return self[key][self.DEFEND]
 
     def by_type(self, key) -> Dict:
         """takes "passive", "attacks", "captures", "defends", "pin" """
@@ -303,21 +315,59 @@ class ResultSet(MutableMapping):
     def by_types(self, keys):
         return {piece: {key: val for key, val in moves if key in keys} for piece, moves in self.store.items()}
 
-
+    def lookup_pin(self, loc):
+        for piece, moves in self.store.items():
+            if moves[self.PIN] == loc:
+                return piece
+        return None
 
     @property
     def all_pins(self):
         """Get a dict of pinning: pin_location pieces"""
         if self.pins: return self.pins
 
-        self.pins = {}
-        for piece, moves in self.store.items():
-            if moves["pin"]:
-                self.pins[piece] = moves["pin"]
+        self.pins = []
+        for _, moves in self.store.items():
+            [self.pins.append(i) for i in moves[self.PIN]]
         return self.pins
 
+        self.pins = []
+        for piece, moves in self.store.items():
+            if moves["pin"]:
+                self.pins[piece] = moves[self.PIN]
+        return self.pins
 
-        
+    @property
+    def king(self):
+        result = ResultSet()
+        for p, m in self.store.items():
+            if p.kind == 'k':
+                result[p] = m
+
+    def clear(self, key):
+        self.store[key] = self.PROTOTYPE_STORE
+
+    def clear_all(self):
+        for key in self.store.keys():
+            self.store[key] = self.PROTOTYPE_STORE
+
+    def filter(self, key, test: Callable) -> None:
+        # Performs a filter in place
+        # Get the passive and capture values (only legit moves)
+        passive = self.store[key][self.PASSIVE]
+        capture = self.store[key][self.CAPTURE]
+
+        # Generate a boolean mask of values to keep and discard
+        passive_mask = list(map(test, passive))
+        capture_mask = list(map(test, capture))
+
+        # Walk through and keep only the values we want
+        passive = [i[0] for i in zip(passive, passive_mask) if i[1]]
+        capture = [i[0] for i in zip(capture, capture_mask) if i[1]]
+
+
+
+
 
 
 

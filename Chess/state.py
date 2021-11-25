@@ -154,7 +154,7 @@ class Board():
             elif capture_allowed: return self.ATTACKS
             else: return self.DISALLOWED
 
-    def __find_moves(self, piece) -> Dict[str, List[Piece]]:
+    def __psuedolegal_moves(self, piece) -> Dict[str, List[Piece]]:
         """__find_moves.
         All-knowing function which just gets every "semivalid" move for a piece.
         It essentially casts a ray from each projection of a piece to its specified
@@ -231,7 +231,7 @@ class Board():
         diagonal do not come up as undefended. The kings captures must only be on 
         undefended pieces.
         """
-        candidates = self.__find_moves(king)
+        candidates = self.__psuedolegal_moves(king)
         valid = {}
 
         # Remove the allied king from the state
@@ -240,7 +240,7 @@ class Board():
         temp_king = moving_pieces.pop(king_index)
         
         # Calculate the moves for the enemy pieces without the king there
-        moves_without_king = self.__find_move_set(self._get_opposing(), king_evaluation=False)
+        moves_without_king = self.__psuedolegal_move_set(self._get_opposing(), king_evaluation=False)
         moving_pieces.insert(king_index, temp_king)
 
         # Get a flat list of the squares which are passively controlled by enemy pieces.
@@ -299,12 +299,9 @@ class Board():
         valid["pin"] = None
         return valid
         
-    def __filter_moves(self, piece):
+    def __filter_moves(self, results: ResultSet):
         """__filter_moves.
         Will filter out illegal moves from __find_moves(piece).
-
-        :param piece:
-
         Following the procedure:
         1. If there is more than one piece delivering check then only the king may move.
         2. If there is exactly one piece delivering check then pieces may only move to resolve
@@ -313,15 +310,39 @@ class Board():
             own king.
         These rules are used to filter out the space of valid moves sequentially.
         """
-        results = {}
-        results["passive"] = []
-        results["captures"] = []
-        results["defending"] = []
-        results["pin"] = None
-
+        # Fetches enemy psuedolegal moves and returns attacking pieces
         attackers = self._evaluate_check()
-        piece_moves = self.__find_moves(piece)
         king = self._get_king()
+        if len(attackers) > 1:
+            results.clear_all()
+            results[king] = self.__find_king_moves(king)
+            return results
+
+        for piece, move_list in results.items():
+            # If there is only one attacker, non-king pieces can only move on the path attacker - king
+            # If the piece is a king then fetch the king_moves from __filter_king_moves algorithm
+            if len(attackers) == 1:
+                attacker = attackers.pop()
+                path = self.piece_map[attacker].path_to(self.piece_map[king])
+
+                # This needs to change
+                # piece_moves = self.__intersection(piece_moves, path)
+                results.filter(piece, lambda x: x in path)
+
+            # Finally, if attackers <=1 resolve pins.
+            opposing = self.__psuedolegal_move_set(self._get_opposing())
+            pin = opposing.lookup_pin(self.loc_map[piece])
+            if pin:
+                # Only valid moves for a pinned piece will be on the axis of the opposing piece
+                # and king.
+                path = self.piece_map[pin].path_to(self.piece_map[king])
+                results.filter(piece, lambda x: x in path)
+
+            return results
+
+            # Return
+
+
         
         if len(attackers) > 1:
             if piece != king: return results 
@@ -336,7 +357,7 @@ class Board():
         
         # Finally we resolve pins
         # Find the opposing piece pinning the allied piece (pinned_by, piece)
-        opposing_moves = self.get_move_set(self._get_opposing())
+        opposing_moves = self.legal_moves(self._get_opposing())
         pinned_by = [
             enemy_piece for enemy_piece, moves in opposing_moves.items()\
             if moves["pin"] == self.piece_map[piece]
@@ -388,13 +409,13 @@ class Board():
         else:
             return [i for i in self._white if i.is_active]
 
-    def _get_king(self) -> King:
+    def _get_king(self, pieces=self._get_moving()) -> King:
         """_get_king.
         Returns the king of the side moving this turn.
 
         :rtype: King
         """
-        return [i for i in self._get_moving() if isinstance(i, King)].pop()
+        return [i for i in pieces if isinstance(i, King)].pop()
 
     def __intersection(self, 
                       moves: ResultSet, 
@@ -422,7 +443,7 @@ class Board():
 
         :rtype: List[Optional[Piece]]
         """
-        moves = self.__find_move_set(self._get_opposing(), king_evaluation=False)
+        moves = self.__psuedolegal_move_set(self._get_opposing())
         king = self._get_king()
 
         # Extract all the attacks from the move
@@ -446,7 +467,7 @@ class Board():
         """
         # move_types = ["passive", "captures"]
         # moves_list = []
-        all_moves = self.__find_move_set(self._get_moving(), king_evaluation=True)
+        all_moves = self.__psuedolegal_move_set(self._get_moving(), king_evaluation=True)
         # for all_piece_moves in all_moves.values():
         #     for move_key, move_list in all_piece_moves.items():
         #         if move_key in move_types:
@@ -465,13 +486,10 @@ class Board():
         pass
 
 
-    def __find_move_set(self, pieces: list[Piece], king_evaluation):
+    def __psuedolegal_move_set(self, pieces: list[Piece]):
         results = ResultSet()
-        for piece, moves in zip(pieces, list(map(self.__find_moves, pieces))):
+        for piece, moves in zip(pieces, list(map(self.__psuedolegal_moves, pieces))):
             results[piece] = moves
-        if king_evaluation:
-            king = [i for i in pieces if isinstance(i, King)].pop() #If this fails then theres no king...
-            results[king] = self.__find_king_moves(king)
         return results
 
     def get_moves(self, piece: Piece):
@@ -489,7 +507,7 @@ class Board():
             return self.__find_king_moves(piece)
         return self.__filter_moves(piece)
 
-    def get_move_set(self, pieces: list[Piece]) -> ResultSet:
+    def legal_moves(self, pieces: list[Piece]=self._get_moving()) -> ResultSet:
         """get_move_set.
         Wrapper to get a set of moves instead of just those for a singular piece
 
@@ -498,6 +516,12 @@ class Board():
         :type pieces: list[Piece]
         :rtype: ResultSet
         """
+        # Get psuedolegal moves for allied pieces
+        psl = self.__psuedolegal_move_set(pieces)
+
+        # Filter the moves 
+        return self.__filter_moves(psl)
+
         return self.__find_move_set(pieces, king_evaluation=True)
 
     @property
@@ -541,7 +565,7 @@ class Board():
 
     @property
     def allied_moves(self) -> ResultSet:
-        return self.__find_move_set(self._get_moving(), king_evaluation=True)
+        return self.__psuedolegal_move_set(self._get_moving(), king_evaluation=True)
 
     def calculate(self):
         # Work out if the current state is check?
@@ -553,7 +577,7 @@ class Board():
         elif mate == self.CONTINUE: self._is_mate = self._is_stale = False
 
         # Calculate the possible moves
-        self._allowed_moves = self.get_move_set(self._get_moving())
+        self._allowed_moves = self.legal_moves(self._get_moving())
 
 
     def move(self, mov: Move):
