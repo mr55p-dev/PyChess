@@ -17,7 +17,11 @@ movs = ["c3", "Nc6", "d4", "Nxd4", "cxd4", "d5", "e4", "dxe4", "Be3", "Qxd4", "Q
 #     ans = board.move(move)
 #     print(ans)
 #     view_board_mono(board)
- 
+
+board = construct_board("r1bQkbnr/1pp1pppp/8/8/p3p3/N3B3/PP3PPP/3RKBNR b KQkq - 0 8")
+board.calculate()
+board.to_fen()
+
 game = Game(
     view_callback=view_board_mono,
     start_state=fen

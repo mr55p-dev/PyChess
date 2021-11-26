@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
 from Chess.constants import BLACK, WHITE
@@ -15,6 +15,14 @@ class MoveSignal(Enum):
     checking_attack = 3
     disallowed      = 4
     attacks         = 5
+
+
+class WinState(Enum):
+    cont = auto()
+    mate = auto()
+    stalemate = auto()
+    draw = auto()
+    move_timeout = auto()
 
 
 class Board():
@@ -48,19 +56,15 @@ class Board():
         self._opposition = WHITE if to_move == BLACK else BLACK
 
         # Setup properties which we will later bind in the `calculate` function
-        self._is_check = [] 
-        self._is_mate = False
+        self.__is_check = []
+        self.__win_state = WinState.cont
         self._evaluation = 0
-        self._allowed_moves = ResultSet()
 
         # This is just while castling and en-passant is not implemented
         self._castle = self.__parse_castle(can_castle) # castle[4] : white kingside, queenside, black kingside, queenside
         self.other_FEN_params = other_fen_params
 
         self.calculate()
-
-    # def __hash__(self) -> int:
-    #     return hash(self.to_fen())
 
     def __repr__(self) -> str:
         """__repr__.
@@ -247,22 +251,22 @@ class Board():
         king = self.__get_king()
 
         king_loc = self.piece_map[king]
-        moves = moves.filter_by_move_type(ResultKeys.attack, lambda x: x == king_loc)
-        return [i for i in moves if moves[i][ResultKeys.attack]]
+        moves = moves.filter_by_move_type(ResultKeys.capture, lambda x: x == king_loc)
+        return [i for i in moves if moves[i][ResultKeys.capture]]
 
-    def __evaluate_mate(self) -> int:
+    def __evaluate_mate(self) -> WinState:
         """_evaluate_mate.
         Will evaluate if the position is checkmate or stalemate.
         Returns one of self.CONTINUE, self.STALEMATE or self.CHECKMATE
 
         :rtype: int
         """
-        moves = self.__psuedolegal_moves(self.moving)
+        moves = self.legal_moves(self.moving)
 
         if not moves.all_valid: 
-            if self.is_check: return self.CHECKMATE
-            else: return self.STALEMATE
-        return self.CONTINUE
+            if self.__is_check: return WinState.mate
+            else: return WinState.stalemate
+        return WinState.cont
 
     def _evaluate_score(self):
         """_evaluate_score."""
@@ -285,13 +289,8 @@ class Board():
         return self.__filter_moves(psl)
 
     def calculate(self) -> None:
-        # Work out if the current state is check?
-        self._is_check = self.__evaluate_check() 
-
-        self._is_mate = self.__evaluate_mate()
-        if self._is_mate == self.CHECKMATE: self._is_mate = True; self._is_stale = False
-        elif self._is_mate == self.STALEMATE: self._is_stale = True; self._is_mate = False
-        elif self._is_mate == self.CONTINUE: self._is_mate = self._is_stale = False
+        self.__is_check = self.__evaluate_check() 
+        self.__win_state = self.__evaluate_mate() 
 
         # Calculate the possible moves
         self._allowed_moves = self.legal_moves(self.moving)
@@ -320,11 +319,7 @@ class Board():
             self._to_move = WHITE
             self._turn = self._turn + 1
 
-        # self._to_move = BLACK if self._to_move == WHITE else WHITE
-        # self._turn = self._turn + 1
-
         self.calculate()
-
         return True
 
 
@@ -416,16 +411,16 @@ class Board():
         return self._black + self._white
 
     @property
-    def is_check(self) -> List[Optional[Piece]]:
-        return self._is_check
+    def is_check(self) -> List[Piece]:
+        return self.__is_check
 
     @property
     def is_mate(self) -> bool:
-        return self._is_mate
+        return self.__win_state == WinState.mate
     
     @property
     def is_stale(self) -> bool:
-        return self._is_stale
+        return self.__win_state == WinState.stalemate
     
     @property
     def to_move(self) -> int:
