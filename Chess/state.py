@@ -1,8 +1,8 @@
-import math
 from typing import Dict, List, Optional, Tuple
 
 from Chess.constants import BLACK, WHITE
-from Chess.coordinate import Move, Position, ResultSet
+from Chess.coordinate import Move, Position
+from Chess.result import ResultSet, ResultKeys, Result
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
 from Chess.pieces import King, Piece
@@ -24,8 +24,8 @@ class Board():
     def __init__(self,
                  starting_position: Tuple[List[Piece], List[Piece]] = new_game(),  # type: ignore
                  to_move: int = WHITE,
-                 turn: int = 0,
-                 can_castle: str = "-",
+                 turn: int = 1,
+                 can_castle: str = "KQkq",
                  other_fen_params = []) -> None:
 
         # Store the fen information gi en and piece representations
@@ -121,8 +121,8 @@ class Board():
 
     def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         results = ResultSet(pieces)
-        for piece in pieces:
-            results[piece] = ResultSet.PROTOTYPE_STORE
+        for piece in results:
+            result = results[piece]
             for dir in piece.projections:
                 # Iterate over all the directions a piece can move in
                 # Reset the pinned marker.
@@ -136,27 +136,33 @@ class Board():
                                     
                     if (allowed:=self.__allowed_move(landed_on, piece)) == self.EMPTY:
                         # Store empty squares if we are not looking for a pin
-                        if pinned == None: results[piece]["passive"].append(landed_on)
+                        # if pinned == None: results[piece][results.PASSIVE].append(landed_on)
+                        if pinned == None: result[ResultKeys.passive].append(landed_on)
                     elif allowed == self.CAPTURE:
                         # Store a capture if we are not looking for a pin
                         if pinned == None:
-                            results[piece][ResultSet.CAPTURE].append(landed_on) 
+                            # results[piece][results.CAPTURE].append(landed_on) 
+                            result[ResultKeys.capture].append(landed_on) 
                             pinned = self.loc_map[landed_on]
                         # Stop looking for a pin if we encounter a piece that isnt the king
                         else: break
                     elif allowed == self.CHECKING_ATTACK:
                         # Store a check if we are not looking for a pin
-                        if pinned == None: results[piece][ResultSet.CAPTURE].append(landed_on); break
+                        # if pinned == None: results[piece][results.CAPTURE].append(landed_on); break
+                        if pinned == None: result[ResultKeys.capture].append(landed_on); break
                         # Store a pin if we found one
-                        else: results[piece][ResultSet.PIN].append(pinned); break
+                        # else: results[piece][results.PIN].append(pinned); break
+                        else: result[ResultKeys.pin].append(landed_on); break
                     elif allowed == self.BLOCKED:
                         # Store a piece as defended if we are not looking for a pin
-                        if pinned == None: results[piece][ResultSet.DEFEND].append(landed_on); break
+                        # if pinned == None: results[piece][results.DEFEND].append(landed_on); break
+                        if pinned == None: result[ResultKeys.defend].append(landed_on); break
                         # Stop looking if there is another piece before the king
                         else: break
                     elif allowed == self.ATTACKS and pinned == None: 
                         # Store a pawns attacks in a separate list
-                        results[piece][ResultSet.ATTACK].append(landed_on); break
+                        # results[piece][results.ATTACK].append(landed_on); break
+                        result[ResultKeys.attack].append(landed_on); break
                     elif allowed == self.DISALLOWED:
                         break
 
@@ -169,7 +175,7 @@ class Board():
         if len(attackers) > 1:
             # Remove all other piece moves
             not_king = [i for i in results.keys() if i != king]
-            map(results.clear, not_king)
+            results.clear_set(not_king)
 
             # Remove the allied king from the state
             moving_pieces = self.moving
@@ -183,10 +189,9 @@ class Board():
             # Filter out moves which are to spaces controlled (either through valid moves,
             # psuedo moves or pawn "hypothetical" moves (stored as attacks). Also
             # filter out captures of "defended" pieces which would result in the king being in check.
-            invalid_squares = opposing_moves.all_valid + opposing_moves.attacks + opposing_moves.defended
-            results.filter(king, lambda x: x not in invalid_squares)
-
-            return results
+            invalid_squares = \
+                opposing_moves.all_valid + opposing_moves.all_attack + opposing_moves.all_defend
+            results[king].filter_all(lambda x: x not in invalid_squares)
 
         for piece in results.keys():
             # If there is only one attacker, non-king pieces can only move on the path attacker - king
@@ -197,7 +202,7 @@ class Board():
 
                 # Get the path from the attacker to the king, filter moves to only that path.
                 path = self.piece_map[attacker].path_to(self.piece_map[king])
-                results.filter(piece, lambda x: x in path)
+                results[piece].filter_all(lambda x: x in path)
 
             # Finally, if attackers <=1 resolve pins.
             opposing_moves = self.__psuedolegal_moves(self.opposing)
@@ -206,7 +211,7 @@ class Board():
                 # Only valid moves for a pinned piece will be on the axis of the opposing piece
                 # and king.
                 path = self.piece_map[pin].path_to(self.piece_map[king])
-                results.filter(piece, lambda x: x in path)
+                results[piece].filter_all(lambda x: x in path)
 
         return results
 
@@ -229,10 +234,9 @@ class Board():
         moves = self.__psuedolegal_moves(self.opposing)
         king = self.__get_king()
 
-        # Extract all the attacks from the move
-        captures = moves.by_type("captures")
-        captures = filter(lambda x: self.piece_map[king] in x[1], captures.items())
-        return [i[0] for i in captures]
+        king_loc = self.piece_map[king]
+        moves.filter_by_move_type(ResultKeys.attack, lambda x: x == king_loc)
+        return [i for i in moves if moves[i][ResultKeys.attack]]
 
     def __evaluate_mate(self) -> int:
         """_evaluate_mate.
@@ -290,7 +294,7 @@ class Board():
         :type mov: Move
         """
         try: moving_piece = self.loc_map[mov.start]
-        except KeyError: return False
+        except KeyError: raise ValueError(f"Move.start is invalid: {mov.start}")
         self.__update_piece(moving_piece, new_position=mov.end)
 
         # Remove captured pieces so they dont remain forever.
@@ -298,8 +302,14 @@ class Board():
             captured = self.loc_map[mov.end]
             self.__update_piece(captured, is_active=False)
 
-        self._to_move = BLACK if self._to_move == WHITE else WHITE
-        self._turn = self._turn + 1
+        if self._to_move:
+            self._to_move = BLACK
+        else:
+            self._to_move = WHITE
+            self._turn = self._turn + 1
+
+        # self._to_move = BLACK if self._to_move == WHITE else WHITE
+        # self._turn = self._turn + 1
 
         return True
 
@@ -337,13 +347,13 @@ class Board():
         fields.append(next_move)
 
         castle_rep = ["K", "Q", "k", "q"]
-        can_castle = [v for i, v in enumerate(castle_rep) if self._castle[i]] 
+        can_castle = [v for i, v in enumerate(castle_rep) if self._castle[i]]
 
         # Since i am not ready to finish FEN we will add default data to the end
         fields.append("".join(can_castle))
         fields.append("-") # En-passant right
-        fields.append(str(math.ceil(self._turn/2))) # Full move clock
-        fields.append(str(self._turn - 1)) # Half move clock ish...
+        fields.append(str(0)) # Half move clock ish...
+        fields.append(str(self._turn)) # Full move clock
         return " ".join(fields)
 
     @property

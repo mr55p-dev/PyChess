@@ -1,8 +1,8 @@
 WHITE = True
 BLACK = False
 
-CART_COORD = range(0, 8)
-RANKS = range(1, 9)
+CART_COORD = list(range(0, 8))
+RANKS = list(range(1, 9))
 
 FILES = {
     0: "A",
