@@ -15,3 +15,6 @@ class InvalidStartingPosition(ValueError):
 
 class InvalidStateChange(ValueError):
     pass
+
+class MoveParseError(ValueError):
+    pass

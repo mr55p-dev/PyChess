@@ -64,7 +64,7 @@ class Position:
     _TYPE_CAR = Tuple[int, int]
     _TYPE_INI = Union[str, Tuple[int, int]]
 
-    def __init__(self, pos: self._TYPE_INI) -> None:
+    def __init__(self, pos: _TYPE_INI) -> None:
         """__init__.
 
         :param self:

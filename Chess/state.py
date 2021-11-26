@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from Chess.constants import BLACK, WHITE
@@ -6,6 +7,15 @@ from Chess.result import ResultSet, ResultKeys, Result
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
 from Chess.pieces import King, Piece
+
+class MoveSignal(Enum):
+    blocked         = 0
+    capture         = 1
+    empty           = 2
+    checking_attack = 3
+    disallowed      = 4
+    attacks         = 5
+
 
 class Board():
     # Static attributes
@@ -77,7 +87,7 @@ class Board():
         return castling
 
 
-    def __allowed_move(self, position, piece) -> int:
+    def __allowed_move(self, position, piece) -> MoveSignal:
         """__allowed_move.
         Decides if a move is valid and what type of move it is if so.
 
@@ -93,7 +103,7 @@ class Board():
         capture_allowed = True
         passive_allowed = True
         # Faster than using isinstance calls
-        if piece.kind == 'p':
+        if piece.kind == 'P':
 
             start_position = self.piece_map[piece]
             # The pieces start at either i=1 or i=6
@@ -104,25 +114,28 @@ class Board():
             if start_position._j - position._j == 0:
                 capture_allowed = False
             if has_moved and start_position._i - position._i in [2, -2]:
-                return self.DISALLOWED
+                return MoveSignal.disallowed
 
         if position in self.loc_map.keys():
             occupied_by = self.loc_map[position]
-            if occupied_by.colour == piece.colour: return self.BLOCKED
+            if occupied_by.colour == piece.colour: return MoveSignal.blocked
             else:
-                if isinstance(occupied_by, King): return self.CHECKING_ATTACK
+                if isinstance(occupied_by, King): return MoveSignal.checking_attack
                 else:
-                    if capture_allowed: return self.CAPTURE
-                    else: return self.DISALLOWED
+                    if capture_allowed: return MoveSignal.capture
+                    else: return MoveSignal.disallowed
         else:
-            if passive_allowed: return self.EMPTY
-            elif capture_allowed: return self.ATTACKS
-            else: return self.DISALLOWED
+            if passive_allowed: 
+                return MoveSignal.empty
+            elif capture_allowed: 
+                return MoveSignal.attacks
+            else: 
+                return MoveSignal.disallowed
 
     def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
-        results = ResultSet(pieces)
-        for piece in results:
-            result = results[piece]
+        results = ResultSet()
+        for piece in pieces:
+            result = Result()
             for dir in piece.projections:
                 # Iterate over all the directions a piece can move in
                 # Reset the pinned marker.
@@ -133,12 +146,11 @@ class Board():
                     try: landed_on = self.piece_map[piece] + (dir * step)
                     except InvalidFormat: break
                     
-                                    
-                    if (allowed:=self.__allowed_move(landed_on, piece)) == self.EMPTY:
+                    if (allowed:=self.__allowed_move(landed_on, piece)) == MoveSignal.empty:
                         # Store empty squares if we are not looking for a pin
                         # if pinned == None: results[piece][results.PASSIVE].append(landed_on)
                         if pinned == None: result[ResultKeys.passive].append(landed_on)
-                    elif allowed == self.CAPTURE:
+                    elif allowed == MoveSignal.capture:
                         # Store a capture if we are not looking for a pin
                         if pinned == None:
                             # results[piece][results.CAPTURE].append(landed_on) 
@@ -146,25 +158,25 @@ class Board():
                             pinned = self.loc_map[landed_on]
                         # Stop looking for a pin if we encounter a piece that isnt the king
                         else: break
-                    elif allowed == self.CHECKING_ATTACK:
+                    elif allowed == MoveSignal.checking_attack:
                         # Store a check if we are not looking for a pin
                         # if pinned == None: results[piece][results.CAPTURE].append(landed_on); break
                         if pinned == None: result[ResultKeys.capture].append(landed_on); break
                         # Store a pin if we found one
                         # else: results[piece][results.PIN].append(pinned); break
                         else: result[ResultKeys.pin].append(landed_on); break
-                    elif allowed == self.BLOCKED:
+                    elif allowed == MoveSignal.blocked:
                         # Store a piece as defended if we are not looking for a pin
                         # if pinned == None: results[piece][results.DEFEND].append(landed_on); break
                         if pinned == None: result[ResultKeys.defend].append(landed_on); break
                         # Stop looking if there is another piece before the king
                         else: break
-                    elif allowed == self.ATTACKS and pinned == None: 
+                    elif allowed == MoveSignal.attacks and pinned == None: 
                         # Store a pawns attacks in a separate list
                         # results[piece][results.ATTACK].append(landed_on); break
                         result[ResultKeys.attack].append(landed_on); break
-                    elif allowed == self.DISALLOWED:
-                        break
+                    elif allowed == MoveSignal.disallowed: break
+            results[piece] = result
 
         return results
      
@@ -191,7 +203,7 @@ class Board():
             # filter out captures of "defended" pieces which would result in the king being in check.
             invalid_squares = \
                 opposing_moves.all_valid + opposing_moves.all_attack + opposing_moves.all_defend
-            results[king].filter_all(lambda x: x not in invalid_squares)
+            results[king] = results[king].filter_all(lambda x: x not in invalid_squares)
 
         for piece in results.keys():
             # If there is only one attacker, non-king pieces can only move on the path attacker - king
@@ -202,7 +214,7 @@ class Board():
 
                 # Get the path from the attacker to the king, filter moves to only that path.
                 path = self.piece_map[attacker].path_to(self.piece_map[king])
-                results[piece].filter_all(lambda x: x in path)
+                results[piece] = results[piece].filter_all(lambda x: x in path)
 
             # Finally, if attackers <=1 resolve pins.
             opposing_moves = self.__psuedolegal_moves(self.opposing)
@@ -211,7 +223,7 @@ class Board():
                 # Only valid moves for a pinned piece will be on the axis of the opposing piece
                 # and king.
                 path = self.piece_map[pin].path_to(self.piece_map[king])
-                results[piece].filter_all(lambda x: x in path)
+                results[piece] = results[piece].filter_all(lambda x: x in path)
 
         return results
 
@@ -230,12 +242,12 @@ class Board():
     def __get_king(self) -> King:
         return [i for i in self.moving if isinstance(i, King)].pop()
 
-    def __evaluate_check(self) -> List[Optional[Piece]]:
+    def __evaluate_check(self) -> List[Piece]:
         moves = self.__psuedolegal_moves(self.opposing)
         king = self.__get_king()
 
         king_loc = self.piece_map[king]
-        moves.filter_by_move_type(ResultKeys.attack, lambda x: x == king_loc)
+        moves = moves.filter_by_move_type(ResultKeys.attack, lambda x: x == king_loc)
         return [i for i in moves if moves[i][ResultKeys.attack]]
 
     def __evaluate_mate(self) -> int:
@@ -276,10 +288,10 @@ class Board():
         # Work out if the current state is check?
         self._is_check = self.__evaluate_check() 
 
-        mate = self.__evaluate_mate()
-        if mate == self.CHECKMATE: self._is_mate = True; self._is_stale = False
-        elif mate == self.STALEMATE: self._is_stale = True; self._is_mate = False
-        elif mate == self.CONTINUE: self._is_mate = self._is_stale = False
+        self._is_mate = self.__evaluate_mate()
+        if self._is_mate == self.CHECKMATE: self._is_mate = True; self._is_stale = False
+        elif self._is_mate == self.STALEMATE: self._is_stale = True; self._is_mate = False
+        elif self._is_mate == self.CONTINUE: self._is_mate = self._is_stale = False
 
         # Calculate the possible moves
         self._allowed_moves = self.legal_moves(self.moving)
@@ -310,6 +322,8 @@ class Board():
 
         # self._to_move = BLACK if self._to_move == WHITE else WHITE
         # self._turn = self._turn + 1
+
+        self.calculate()
 
         return True
 

@@ -4,6 +4,7 @@ from typing import Callable, List, Optional
 from Chess import Board
 from Chess.constants import BLACK, PIECE_TYPES, WHITE
 from Chess.coordinate import Move, Position
+from Chess.exceptions import MoveParseError
 from Chess.helpers import create_piece
 
 
@@ -62,7 +63,7 @@ class Game():
 
         next_turn = WHITE if fields[1] == 'w' else BLACK # next player to move
         castle = fields[2] # Castling information
-        en_passant = fields[3 ]# Valid enpassant moves
+        en_passant = fields[3 ] # Valid enpassant moves
         half_moves = int(fields[4]) # Halfmove clock 2x moves since last pawn move or capture
         n_moves = int(fields[5]) # Number of full moves
 
@@ -74,34 +75,38 @@ class Game():
         print(matches)
 
         if not matches:
-            raise ValueError("A valid move could not be found")
+            raise MoveParseError("A valid move could not be found")
         move_repr = matches.pop()
 
         takes = False
         if move_repr[2]:
             takes = True
 
-        if not move_repr[3]: raise ValueError("A valid move could not be found")
+        if not move_repr[3]: raise MoveParseError("A valid move could not be found")
         end = Position(move_repr[3].upper())
 
         start = move_repr[1]
         if len(start) == 2:
             start = Position(start.upper())
         else:
+            piece = move_repr[0]
+            if not piece: piece = "P"
             moves = self.peek.allied_moves
-            moves.filter_all_by_key(lambda x: x.kind == start.lower())
-            moves.filter_all_by_value(lambda x: end in x)
-            piece_candidates = list(moves.keys())
+            moves = moves.filter_all_by_value(lambda x: x == end)
+            piece_candidates = [k for k in moves if moves[k].has_passive_or_capture]
+            if piece: piece_candidates = [p for p in piece_candidates if p.kind == piece]
 
             if not piece_candidates:
-                raise ValueError(f"Not enough information to move to {end}")
+                raise MoveParseError(f"Not enough information to move to {end}")
             elif len(piece_candidates) > 1:
                 # Hacky way to check the same file
                 piece_candidates = [i \
                               for i in piece_candidates \
-                              if str(self.peek.piece_map[i])[0] == start.upper()]
-                if not piece_candidates or len(piece_candidates) > 1:
-                    raise ValueError(f"Multiple pieces may move to {end}")
+                              if str(self.peek.piece_map[i])[0] == start.upper()
+                            ]
+                if not len(piece_candidates) == 1:
+                    raise MoveParseError(f"Multiple pieces may move to {end}")
+            start = self.peek.piece_map[piece_candidates.pop()]
 
         return Move(start, end, takes)
 
@@ -131,7 +136,10 @@ class Game():
         return self.__move(move)
 
     def execute_move_str(self, move_str: str) -> bool:
-        move = self.__parse_move(move_str)
+        try: move = self.__parse_move(move_str)
+        except MoveParseError as e:
+            print(e)
+            return False
         return self.__move(move)
 
     def show_board(self):
@@ -151,8 +159,10 @@ class Game():
     def play(self):
         while self.__check_termination():
             self.show_board()
-            move = input("Please enter a move>> ")
-            self.execute_move_str(move)
+            worked = False
+            while not worked:
+                move = input("Please enter a move>> ")
+                worked = self.execute_move_str(move)
         # Begin a game loop
         # while running: 
         #   # renderer

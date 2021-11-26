@@ -7,30 +7,27 @@ from Chess.view import view_board_mono
 
 fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 P = Position
-movs = [Move(P("D2"), P("D4"), False), Move(P("E7"), P("E5"), False)]
-         # "c4", "exd4",
-         # "Nc3", "Nf6",
-         # "Bf5"]
+movs = []
 
+movs = ["c3", "Nc6", "d4", "Nxd4", "cxd4", "d5", "e4", "dxe4", "Be3", "Qxd4", "Qxd4", "a6", "Na3", "a5", "Rd1", "a4", "Qd8"]
 
-board = Board()
-view_board_mono(board)
-for move in movs:
-    ans = board.move(move)
-    print(ans)
-    view_board_mono(board)
-
-move_strings = ["d4", "e5"]
-
+# board = Board()
+#view_board_mono(board)
+# for move in movs:
+#     ans = board.move(move)
+#     print(ans)
+#     view_board_mono(board)
+ 
 game = Game(
     view_callback=view_board_mono,
     start_state=fen
 )
 game.show_board()
 
-for move in move_strings:
-    print(f"Performing {move}")
+for move in movs: 
+    print(f"Perforing {move}")
     game.execute_move_str(move)
     game.show_board()
 
+    print(game.peek.is_check)
 

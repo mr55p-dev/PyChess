@@ -1,6 +1,7 @@
 from Chess.constants import BLACK, WHITE
 from Chess.result import ResultKeys
 from Chess.state import Board
+from Chess.pieces import Piece
 
 
 class bcolors:
