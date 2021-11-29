@@ -1,3 +1,4 @@
+from typing import List
 from Chess.constants import BLACK, WHITE
 from Chess.result import ResultKeys
 from Chess.state import Board
@@ -25,7 +26,7 @@ class bcolors:
 
 
 
-def view_board_mono(board: Board, show_moves: Piece = None):
+def view_board_mono(board: Board, show_moves: List[Piece] = None):
     """Simple fuction to view a game state"""
     representation = [["   " for _ in range(8)] for _ in range(8)]
     count = 0
@@ -35,15 +36,16 @@ def view_board_mono(board: Board, show_moves: Piece = None):
         representation[loc.i][loc.j] = f" {rep} "
 
     if show_moves:
-        moves = board.legal_moves(show_moves)
-        for cap in moves[show_moves][ResultKeys.capture]:
-            representation[cap.i][cap.j] = " x "
-        for pas in moves[show_moves][ResultKeys.passive]:
-            representation[pas.i][pas.j] = " o "
-        print("PIECE MOVES")
+        for piece in show_moves:
+            moves = board.legal_moves(show_moves)
+            for cap in moves[piece][ResultKeys.capture]:
+                representation[cap.i][cap.j] = " x "
+            for pas in moves[piece][ResultKeys.passive]:
+                representation[pas.i][pas.j] = " o "
 
     print(f"{'White' if board.to_move else 'Black'} to move - turn {board.turn}")
     print("\n".join(["".join([cell for cell in row]) for row in representation[::-1]]))
+    print(f"{'STALE' if board.is_stale else ''}{'CHECK' if board.is_check else ''}{'MATE' if board.is_mate else ''}")
 
 def view_board_colour(board: Board, show_moves=None):
     """Simple fuction to view a game state"""
@@ -54,12 +56,12 @@ def view_board_colour(board: Board, show_moves=None):
         representation[loc.i][loc.j] = f"{prefix} {piece.kind} {bcolors.ENDC}"
 
     if show_moves:
-        moves = board.legal_moves(show_moves)
-        for cap in moves[show_moves][ResultKeys.capture]:
-            representation[cap.i][cap.j] = " x "
-        for pas in moves[show_moves][ResultKeys.passive]:
-            representation[pas.i][pas.j] = " o "
-        print("PIECE MOVES")
+        for piece in show_moves:
+            moves = board.legal_moves(show_moves)
+            for cap in moves[piece][ResultKeys.capture]:
+                representation[cap.i][cap.j] = " x "
+            for pas in moves[piece][ResultKeys.passive]:
+                representation[pas.i][pas.j] = " o "
         
     for i_ind, i in enumerate(representation):
         for j_ind, _ in enumerate(i):
@@ -72,4 +74,4 @@ def view_board_colour(board: Board, show_moves=None):
 
     print(f"{'White' if board.to_move else 'Black'} to move - turn {board.turn}")
     print("\n".join(["".join([cell for cell in row]) for row in representation[::-1]]))
-
+    print(f"{'STALE' if board.is_stale else ''}{'CHECK' if board.is_check else ''}{'MATE' if board.is_mate else ''}")

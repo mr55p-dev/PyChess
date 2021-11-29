@@ -49,6 +49,12 @@ class Result(BaseResult):
         res = Result({k: self.__store[k] for k in self.__store})
         res[key] = filtered
         return res
+    
+    def filter_valid(self, test: Callable) -> 'Result':
+        res = Result({k: self.__store[k] for k in self.__store})
+        res[ResultKeys.passive] = [i for i in self.__store[ResultKeys.passive] if test(i)]
+        res[ResultKeys.capture] = [i for i in self.__store[ResultKeys.capture] if test(i)]
+        return res
 
     def filter_all(self, test: Callable) -> 'Result':
         res = Result({k: self.__store[k] for k in self.__store})

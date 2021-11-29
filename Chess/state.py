@@ -1,3 +1,4 @@
+from copy import copy
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
@@ -159,7 +160,7 @@ class Board():
                         if pinned == None:
                             # results[piece][results.CAPTURE].append(landed_on) 
                             result[ResultKeys.capture].append(landed_on) 
-                            pinned = self.loc_map[landed_on]
+                            pinned = copy(landed_on)
                         # Stop looking for a pin if we encounter a piece that isnt the king
                         else: break
                     elif allowed == MoveSignal.checking_attack:
@@ -168,7 +169,7 @@ class Board():
                         if pinned == None: result[ResultKeys.capture].append(landed_on); break
                         # Store a pin if we found one
                         # else: results[piece][results.PIN].append(pinned); break
-                        else: result[ResultKeys.pin].append(landed_on); break
+                        else: result[ResultKeys.pin].append(pinned); break
                     elif allowed == MoveSignal.blocked:
                         # Store a piece as defended if we are not looking for a pin
                         # if pinned == None: results[piece][results.DEFEND].append(landed_on); break
@@ -193,6 +194,7 @@ class Board():
             not_king = [i for i in results.keys() if i != king]
             results.clear_set(not_king)
 
+        if king in results:
             # Remove the allied king from the state
             moving_pieces = self.moving
             king_index = moving_pieces.index(king)
@@ -209,16 +211,18 @@ class Board():
                 opposing_moves.all_valid + opposing_moves.all_attack + opposing_moves.all_defend
             results[king] = results[king].filter_all(lambda x: x not in invalid_squares)
 
+        attacker = None
+        if len(attackers) == 1:
+            attacker = attackers.pop()
+            assert attacker
+
         for piece in results.keys():
             # If there is only one attacker, non-king pieces can only move on the path attacker - king
             # If the piece is a king then fetch the king_moves from __filter_king_moves algorithm
-            if len(attackers) == 1:
-                attacker = attackers.pop()
-                assert attacker
-
+            if attacker:
                 # Get the path from the attacker to the king, filter moves to only that path.
                 path = self.piece_map[attacker].path_to(self.piece_map[king])
-                results[piece] = results[piece].filter_all(lambda x: x in path)
+                results[piece] = results[piece].filter_valid(lambda x: x in path)
 
             # Finally, if attackers <=1 resolve pins.
             opposing_moves = self.__psuedolegal_moves(self.opposing)
@@ -227,7 +231,7 @@ class Board():
                 # Only valid moves for a pinned piece will be on the axis of the opposing piece
                 # and king.
                 path = self.piece_map[pin].path_to(self.piece_map[king])
-                results[piece] = results[piece].filter_all(lambda x: x in path)
+                results[piece] = results[piece].filter_valid(lambda x: x in path)
 
         return results
 
@@ -274,7 +278,8 @@ class Board():
 
     def legal_moves(self, pieces: list[Piece] = None) -> ResultSet:
         """get_move_set.
-        Wrapper to get a set of moves instead of just those for a singular piece
+        Wrapper to get a set of moves instead of just those for a singular piece. Works only with
+        the side "moving".
 
         :param self:
         :param pieces:

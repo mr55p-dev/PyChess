@@ -72,7 +72,6 @@ class Game():
     def __parse_move(self, move_str: str) -> Move:
         pattern = r'([KQRNB])?([a-h]\d?)?(x)?([a-z]\d)$'
         matches = re.findall(pattern, move_str)
-        print(matches)
 
         if not matches:
             raise MoveParseError("A valid move could not be found")
