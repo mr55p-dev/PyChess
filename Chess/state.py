@@ -112,6 +112,31 @@ class Board():
             if has_moved and start_position._i - position._i in [2, -2]:
                 return MoveSignal.disallowed
 
+        Piece -> empty
+              -> allied occupied
+              -> enemy occupied
+        allowed movement capture
+        allowed movement passive
+
+        if position vaccant:
+            takes precedence
+            if passive_allowed:
+                return PASSIVE
+            elif capture allowed:
+                return ATTACK 
+        elif position allied occupied:
+            takes precedence
+            if capture allowed:
+                return DEFEND
+        elif position enemy occupied:
+            if capture allowed:
+                return CHECK or CAPTURE
+        return DISALLOWED
+
+                
+            
+            
+
         if position in self.loc_map.keys():
             occupied_by = self.loc_map[position]
             if occupied_by.colour == piece.colour: return MoveSignal.blocked
@@ -121,11 +146,11 @@ class Board():
                     if capture_allowed: return MoveSignal.capture
                     else: return MoveSignal.disallowed
         else:
-            if passive_allowed: 
+            if passive_allowed:
                 return MoveSignal.empty
-            elif capture_allowed: 
+            elif capture_allowed:
                 return MoveSignal.attacks
-            else: 
+            else:
                 return MoveSignal.disallowed
 
     def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
@@ -191,7 +216,7 @@ class Board():
      
     def __filter_moves(self, results: ResultSet) -> ResultSet:
         # Fetches enemy psuedolegal moves and returns attacking pieces
-        attackers = self.__evaluate_check()
+        attackers = self.__is_check[:]
         king = self.__get_king()
         if len(attackers) > 1:
             # Remove all other piece moves
@@ -269,9 +294,8 @@ class Board():
 
         :rtype: int
         """
-        moves = self.legal_moves(self.moving)
 
-        if not moves.all_valid: 
+        if not self._allowed_moves.all_valid:
             if self.__is_check: return WinState.mate
             else: return WinState.stalemate
         return WinState.cont
@@ -314,11 +338,12 @@ class Board():
         return results
 
     def calculate(self) -> None:
-        self.__is_check = self.__evaluate_check() 
-        self.__win_state = self.__evaluate_mate() 
+        self.__is_check = self.__evaluate_check()
 
         # Calculate the possible moves
         self._allowed_moves = self.legal_moves(self.moving)
+
+        self.__win_state = self.__evaluate_mate()
 
     def valid_castle(self) -> List[Position]:
         """

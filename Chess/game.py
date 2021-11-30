@@ -17,7 +17,7 @@ class Game():
         self.__history: List[Board] = []
         self.__view_callback = view_callback
 
-        if start_state: board = start_state 
+        if start_state: board = start_state
         else: board = Board()
 
         self.push(board)

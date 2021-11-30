@@ -1,4 +1,3 @@
-from copy import copy
 import re
 import pickle
 from itertools import repeat
@@ -38,12 +37,20 @@ def make_board(fen: str) -> Board:
     params = pieces_from_fen(fen)
     return Board(*params)
 
-games = read_pgn_file("./imported_games/lichess_db_standard_rated_2013-01.pgn")
-with open("./generated_data/games", 'wb') as f:
-    pickle.dump(list(games), f)
+# games = read_pgn_file("./imported_games/lichess_db_standard_rated_2013-01.pgn")
+# with open("./generated_data/games", 'wb') as f:
+#     pickle.dump(list(games), f)
 
 with open("./generated_data/games", 'rb') as f:
     games: List = pickle.load(f)
+
+# game = games[2]
+# g = Game(view_board_mono)
+# for move in game:
+#     g.execute_move_str(move)
+#     g.show_board()
+#     
+
 
 games = games[:200]
 
@@ -54,8 +61,8 @@ for i in fen_boards:
 with open("./generated_data/boards.pickle", 'wb') as f:
     pickle.dump(fen_boards, f)
 
-with open("./generated_data/boards.pickle", 'rb') as f:
-    boards = pickle.load(f)
+# with open("./generated_data/boards.pickle", 'rb') as f:
+#     boards = pickle.load(f)
 
 # for board in boards:
 #     view_board_mono(board)
