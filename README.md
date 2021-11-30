@@ -13,10 +13,10 @@ This project will implement Chess in Python, as well as providing functionality 
 - [x] Checks
 - [x] Checkmate
 - [x] Stalemate
+- [x] Castling
 - [ ] Three-fold repetition
 - [ ] 50-half move timeout
 - [ ] En-passant
-- [x] Castling
 - [ ] Piece promotion
 
 ## Bugfixes
@@ -131,34 +131,3 @@ Pieces -> board: {position: piece} -> Game [board]   -> process
 items 	  state						  stack of states   can parse and manipulate a game
 
 [See here for a guide to writing markdown.](https://guides.github.com/features/mastering-markdown/)
-
-
-capture allowed
-passive allowed
-
-switch allowed:
-	case empty:
-		if not pinned: 
-			if piece not pawn:
-				++attacks
-			++passive
-		else continue
-	case capture:
-		if not pinned: 
-			++attacks
-			++capture
-			look for pin
-		if pinned: continue
-	case checking:
-		if not pinned: ++capture
-		if pinned: ++pin
-	case blocked:
-		if not pinned: ++defends
-		else: break (stop looking for pin)
-	case attacks:
-		if not pinned: ++attacks
-	case disallowed:
-		continue
-	
-attacks not pawn: all captures + all passives
-attacks pawn: all captures + all attacks

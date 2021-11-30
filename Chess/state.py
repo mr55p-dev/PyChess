@@ -6,7 +6,7 @@ from Chess.constants import BLACK, WHITE
 from Chess.coordinate import Move, Position
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
-from Chess.pieces import King, Piece, Rook
+from Chess.pieces import King, Pawn, Piece, Rook
 from Chess.result import Result, ResultKeys, ResultSet
 
 class MoveSignal(Enum):
@@ -138,35 +138,48 @@ class Board():
                     except InvalidFormat: break
                     
                     if (allowed:=self.__allowed_move(landed_on, piece)) == MoveSignal.empty:
-                        # Store empty squares if we are not looking for a pin
-                        # if pinned == None: results[piece][results.PASSIVE].append(landed_on)
-                        if pinned == None: result[ResultKeys.passive].append(landed_on)
+                        # Do not store this location if we are searching for a pin
+                        if pinned: continue
+                        # Store this location as a passive, and an attack for pieces which are
+                        # not pawns
+                        if not isinstance(piece, Pawn):
+                            result[ResultKeys.attack].append(landed_on)
+                        result[ResultKeys.passive].append(landed_on)
                     elif allowed == MoveSignal.capture:
-                        # Store a capture if we are not looking for a pin
-                        if pinned == None:
-                            # results[piece][results.CAPTURE].append(landed_on) 
-                            result[ResultKeys.capture].append(landed_on) 
-                            pinned = copy(landed_on)
-                        # Stop looking for a pin if we encounter a piece that isnt the king
-                        else: break
+                        # Do not store a capture on a normal piece if looking for a pin
+                        if pinned: continue
+                        # Store a piece which can be captured as a capture, and an attack
+                        # since that square is controlled by the piece so an enemy king could not
+                        # move there.
+                        result[ResultKeys.capture].append(landed_on) 
+                        result[ResultKeys.attack].append(landed_on)
+                        # Snapshot the current location and check if this piece which can
+                        # be captures is pinned to the king.
+                        pinned = Position((landed_on.i, landed_on.j))
                     elif allowed == MoveSignal.checking_attack:
                         # Store a check if we are not looking for a pin
-                        # if pinned == None: results[piece][results.CAPTURE].append(landed_on); break
-                        if pinned == None: result[ResultKeys.capture].append(landed_on); break
-                        # Store a pin if we found one
-                        # else: results[piece][results.PIN].append(pinned); break
-                        else: result[ResultKeys.pin].append(pinned); break
+                        if pinned: 
+                            result[ResultKeys.pin].append(pinned) 
+                            break            
+                        else:
+                            result[ResultKeys.capture].append(landed_on) 
+                            break
                     elif allowed == MoveSignal.blocked:
-                        # Store a piece as defended if we are not looking for a pin
-                        # if pinned == None: results[piece][results.DEFEND].append(landed_on); break
-                        if pinned == None: result[ResultKeys.defend].append(landed_on); break
-                        # Stop looking if there is another piece before the king
-                        else: break
+                        # Do not consider a piece defended if we are looking at a pin
+                        if pinned: break
+                        # Store a piece as defended if an allied piece sees it
+                        result[ResultKeys.defend].append(landed_on)
+                        break
                     elif allowed == MoveSignal.attacks and pinned == None: 
-                        # Store a pawns attacks in a separate list
-                        # results[piece][results.ATTACK].append(landed_on); break
+                        # Do not save an attack if we are scanning for a pin
+                        if not pinned: continue
+                        # This will only ever be pawn attacks (to separate their passive
+                        # capturing and non-capturing moves)
                         result[ResultKeys.attack].append(landed_on); break
-                    elif allowed == MoveSignal.disallowed: break
+                    elif allowed == MoveSignal.disallowed: 
+                        # Do not continue looking if a move is disallowed
+                        break
+
             results[piece] = result
 
         return results
@@ -190,12 +203,10 @@ class Board():
             opposing_moves = self.__psuedolegal_moves(self.opposing)
             moving_pieces.insert(king_index, temp_king)
 
-            # Filter out moves which are to spaces controlled (either through valid moves,
-            # psuedo moves or pawn "hypothetical" moves (stored as attacks). Also
+            # Filter out moves which are to spaces controlled attacks). Also
             # filter out captures of "defended" pieces which would result in the king being in check.
-            invalid_squares = \
-                opposing_moves.all_valid + opposing_moves.all_attack + opposing_moves.all_defend
-            results[king] = results[king].filter_all(lambda x: x not in invalid_squares)
+            controlled_squares = opposing_moves.all_attack + opposing_moves.all_defend
+            results[king] = results[king].filter_all(lambda x: x not in controlled_squares)
 
         attacker = None
         if len(attackers) == 1:
