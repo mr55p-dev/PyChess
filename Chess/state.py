@@ -4,10 +4,10 @@ from typing import Dict, List, Optional, Tuple
 
 from Chess.constants import BLACK, WHITE
 from Chess.coordinate import Move, Position
-from Chess.result import ResultSet, ResultKeys, Result
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
-from Chess.pieces import King, Piece
+from Chess.pieces import King, Piece, Rook
+from Chess.result import Result, ResultKeys, ResultSet
 
 class MoveSignal(Enum):
     blocked         = 0
@@ -27,19 +27,6 @@ class WinState(Enum):
 
 
 class Board():
-    # Static attributes
-    BLOCKED         = 0
-    CAPTURE         = 1
-    EMPTY           = 2
-    CHECKING_ATTACK = 3
-    DISALLOWED      = 4
-    ATTACKS         = 5
-
-    CHECKMATE = 10
-    STALEMATE = 20
-    CONTINUE  = 30
-    gametype = Tuple[List[Piece], List[Piece]]
-
     def __init__(self,
                  starting_position: Tuple[List[Piece], List[Piece]] = new_game(),  # type: ignore
                  to_move: int = WHITE,
@@ -90,7 +77,6 @@ class Board():
             elif i == "q": castling[3]  = True
             
         return castling
-
 
     def __allowed_move(self, position, piece) -> MoveSignal:
         """__allowed_move.
@@ -219,6 +205,8 @@ class Board():
         for piece in results.keys():
             # If there is only one attacker, non-king pieces can only move on the path attacker - king
             # If the piece is a king then fetch the king_moves from __filter_king_moves algorithm
+            if piece == king:
+                continue
             if attacker:
                 # Get the path from the attacker to the king, filter moves to only that path.
                 path = self.piece_map[attacker].path_to(self.piece_map[king])
@@ -286,12 +274,28 @@ class Board():
         :type pieces: list[Piece]
         :rtype: ResultSet
         """
+        # Either use all the moving pieces, or the list of pieces
+        # passed which also exist in the moving side.
         if not pieces: pieces = self.moving
+        else: pieces = [i for i in pieces if i in self.moving]
+
         # Get psuedolegal moves for allied pieces
         psl = self.__psuedolegal_moves(pieces)
 
         # Filter the moves 
-        return self.__filter_moves(psl)
+        results = self.__filter_moves(psl)
+
+        # Sort out checking for castling (or not)
+        king = [i for i in pieces if isinstance(i, King)]
+        if not king:
+            return results
+
+        # Fix the king passive moves if castling is allowed.
+        king = king.pop()
+        for i in self.valid_castle():
+            results[king][ResultKeys.passive].append(i)
+
+        return results
 
     def calculate(self) -> None:
         self.__is_check = self.__evaluate_check() 
@@ -300,6 +304,98 @@ class Board():
         # Calculate the possible moves
         self._allowed_moves = self.legal_moves(self.moving)
 
+    def valid_castle(self) -> List[Position]:
+        """
+        Case right to castle is not true:
+            No move
+        Case in check:
+            No move
+        Case king not on start:
+            No move
+        Case Rook not on start:
+            No move
+        Case Any square between king and rook occupied:
+            No move
+        Case Attack on any square in castle path:
+            No move
+
+        Allow castle
+        Add move to king passives
+
+        - Listen for O-O or O-O-O
+        - For WHITE: (king then rook)
+            CASTLE_LONG  = (G1, F1)
+            CASTLE_SHORT = (C1, D1)
+        - For BLACK:
+            CASTLE_LONG  = (G8, F8)
+            CASTLE_SHORT = (C8, D8)
+        - Check if castling is valid ^
+        - Do the move
+        - Update the right to castle for this side.
+        """ 
+        if self._to_move:
+            castle_short = self._castle[0]
+            castle_long  = self._castle[1]
+
+            king_start = Position("E1")
+
+            rook_short = Position("H1")
+            rook_long  = Position("A1")
+        else:
+            castle_short = self._castle[2]
+            castle_long  = self._castle[3]
+
+            king_start = Position("E8")
+
+            rook_short = Position("H8")
+            rook_long  = Position("A8")
+
+        if not (castle_short or castle_long):
+            return []
+
+        if self.__is_check:
+            return []
+
+        king = self.__get_king()
+        if self.piece_map[king] != king_start:
+            return []
+
+        if castle_long and castle_short:
+            rooks = [rook_short, rook_long]
+        elif castle_long:
+            rooks = [rook_long]
+        else:
+            rooks = [rook_short]
+
+        valid = []
+        for rook in rooks:
+            if rook not in self.loc_map:
+                continue
+
+            if not isinstance(self.loc_map[rook], Rook):
+                continue
+
+            path = self.piece_map[king].path_to(rook)
+            path = [i for i in path if i != self.piece_map[king]]
+            if [i for i in path if i in self.loc_map]:
+                continue
+
+            enemy_moves = self.__psuedolegal_moves(self.opposing)
+            if [i for i in path if i in enemy_moves.all_valid + enemy_moves.all_attack]:
+                continue
+
+
+            final = [king_start.i, king_start.j]
+            if rook.j == 0:
+                final[1] = final[1] - 2
+            else:
+                final[1] = final[1] + 2
+
+            final = (final[0], final[1])
+                
+            valid.append(Position(final))
+
+        return valid
 
     def move(self, mov: Move) -> bool:
         """Runs a move in the current state. Takes a `Move` object.
@@ -309,9 +405,31 @@ class Board():
         :param mov:
         :type mov: Move
         """
-        try: moving_piece = self.loc_map[mov.start]
-        except KeyError: raise ValueError(f"Move.start is invalid: {mov.start}")
+
+        if mov.start not in self.loc_map:
+            print("Start is not a piece")
+            return False
+
+        # Set the new position
+        moving_piece = self.loc_map[mov.start]
         self.__update_piece(moving_piece, new_position=mov.end)
+
+        # Check if the move is a castle
+        if mov.is_castle:
+            # Validate if the castle is allowed
+            rook_i = mov.start.i
+            # Set long or short castle
+            if mov.is_castle == "short":
+                rook_j = 7
+                rook_end_j = 5
+            elif mov.is_castle == "long":
+                rook_j = 0
+                rook_end_j = 3
+            else:
+                raise Exception()
+            rook = self.loc_map[Position((rook_i, rook_j))]
+            rook_end = Position((rook_i, rook_end_j))
+            self.__update_piece(rook, rook_end)
 
         # Remove captured pieces so they dont remain forever.
         if mov.takes:

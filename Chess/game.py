@@ -11,23 +11,26 @@ from Chess.helpers import create_piece
 class Game():
     def __init__(self,
                  view_callback: Optional[Callable],
-                 start_state: str = ''
+                 start_state: Board = None
                  ) -> None:
         self.__history: List[Board] = []
         self.__future:  List[Board] = []
         self.__view_callback = view_callback
 
-        if start_state: board = self.__parse_fen(start_state)
+        if start_state: board = start_state 
         else: board = Board()
 
         self.push(board)
 
     def __check_termination(self) -> int:
         if self.peek.is_check:
-            return 0
+            print("CHECK")
+            return 1
         elif self.peek.is_mate:
+            print("MATE")
             return 0
         elif self.peek.is_stale:
+            print("STALEMATE")
             return 0
         else:
             return 1
@@ -69,12 +72,53 @@ class Game():
 
         return Board((white_pieces, black_pieces), next_turn, half_moves, castle)
 
+    def __parse_castle(self, move_str: str) -> Optional[Move]:
+        pattern = r'^(O-O)(-O)?$'
+        matches = re.findall(pattern, move_str)
+        if not matches:
+            return None
+        match = matches.pop()
+        if match[0] and match[1]:
+            long = True
+        elif match[0] and not match[1]:
+            long = False
+        else:
+            print("Matched for a castle but with no group contents")
+            return None
+
+        if self.peek.to_move:
+            start_i = 0
+            end_i = 0
+        else:
+            start_i = 7
+            end_i = 7
+
+        if long:
+            start_j = 4
+            end_j = 2
+            castles = 'long'
+        else:
+            start_j = 4
+            end_j = 6
+            castles = 'short'
+
+        start = Position((start_i, start_j))
+        end = Position((end_i, end_j))
+        takes = False
+
+        return Move(start, end, takes, castles)
+
     def __parse_move(self, move_str: str) -> Move:
         pattern = r'([KQRNB])?([a-h]\d?)?(x)?([a-z]\d)$'
         matches = re.findall(pattern, move_str)
 
         if not matches:
-            raise MoveParseError("A valid move could not be found")
+            castle = self.__parse_castle(move_str) 
+            if not castle:
+                raise MoveParseError("A valid move could not be found")
+            
+            return castle
+            
         move_repr = matches.pop()
 
         takes = False

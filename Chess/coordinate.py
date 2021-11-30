@@ -183,10 +183,16 @@ class Position:
 
 
 class Move():
-    def __init__(self, start: Position, end: Position, takes: bool):
+    def __init__(self, 
+                 start: Position, 
+                 end: Position, 
+                 takes: bool,
+                 castle: str = ''                
+                 ):
         self.__start = start
         self.__end = end
-        self._takes = takes
+        self.__takes = takes
+        self.__is_castle = castle
 
     @property
     def start(self) -> Position:
@@ -198,4 +204,8 @@ class Move():
 
     @property
     def takes(self) -> bool:
-        return self._takes
+        return self.__takes
+
+    @property
+    def is_castle(self) -> str:
+        return self.__is_castle

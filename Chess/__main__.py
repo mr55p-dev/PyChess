@@ -18,7 +18,11 @@ def game_end(board: Board):
         return False
 
 def new_game_interactive():
-    game = Game(view_board_colour)
+    if (x:=input(">>> ")):
+        board = construct_board(x)
+    else:
+        board = Board()
+    game = Game(view_board_colour, start_state=board)
     game.play()
 #     view_board = view_board_colour
 #     hist = []
