@@ -25,18 +25,24 @@ class WinState(Enum):
     draw = auto()
     move_timeout = auto()
 
+def new_pieces():
+    yield new_game()
+
 
 class Board():
     def __init__(self,
-                 starting_position: Tuple[List[Piece], List[Piece]] = new_game(),  # type: ignore
+                 starting_position: Tuple[List[Piece], List[Piece]] = None,
                  to_move: int = WHITE,
-                 turn: int = 1,
                  can_castle: str = "KQkq",
-                 other_fen_params = []) -> None:
+                 en_passant_opts: str = "-",
+                 half_moves_since_pawn: int = 0,
+                 turn: int = 1,
+                 ) -> None:
 
         # Store the fen information gi en and piece representations
         # Construct a map of location: piece
-        self._white, self._black = starting_position
+        if starting_position: self._white, self._black = starting_position
+        else: self._white, self._black = new_game()
         self._turn = turn
 
         # Define convenient variables so we know which pieces are moving
@@ -50,7 +56,6 @@ class Board():
 
         # This is just while castling and en-passant is not implemented
         self._castle = self.__parse_castle(can_castle) # castle[4] : white kingside, queenside, black kingside, queenside
-        self.other_FEN_params = other_fen_params
 
         self.calculate()
 
@@ -194,14 +199,14 @@ class Board():
             results.clear_set(not_king)
 
         if king in results:
-            # Remove the allied king from the state
-            moving_pieces = self.moving
-            king_index = moving_pieces.index(king)
-            temp_king = moving_pieces.pop(king_index)
+            # Mark the king as captured
+            king.active = False
             
             # Calculate the moves for the enemy pieces without the king there
             opposing_moves = self.__psuedolegal_moves(self.opposing)
-            moving_pieces.insert(king_index, temp_king)
+
+            # Fix that
+            king.active = True
 
             # Filter out moves which are to spaces controlled attacks). Also
             # filter out captures of "defended" pieces which would result in the king being in check.
@@ -441,6 +446,12 @@ class Board():
             rook = self.loc_map[Position((rook_i, rook_j))]
             rook_end = Position((rook_i, rook_end_j))
             self.__update_piece(rook, rook_end)
+            if self._to_move:
+                self._castle[0] = False
+                self._castle[1] = False
+            else:
+                self._castle[2] = False
+                self._castle[3] = False
 
         # Remove captured pieces so they dont remain forever.
         if mov.takes:

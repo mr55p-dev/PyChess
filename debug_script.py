@@ -13,11 +13,10 @@ black_can_castle_fen = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
 black_castle_queenside = "r3kbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq - 0 1"
 false_checkmate_fen = "r1bq1rk1/ppp3pp/5n2/3Nnp2/8/3Q1NP1/PPP1PP1P/2KR1B1R w - - 0 1"
 missed_b4_fen = "8/3B2p1/8/2k2R2/4P3/1P1K2P1/2P4P/8 b - - 0 1"
+problematic_queen_fen = "r2kQb1r/pbpp3p/1pn1p3/7B/3PP2q/P1N5/1PP2PPP/R3K2R b KQ - 2 13"
 
-start = construct_board(missed_b4_fen)
+start = construct_board(problematic_queen_fen)
 game = Game(view_board_mono, start_state=start)
-game.show_board()
-game.execute_move_str("Kb4")
 game.show_board()
 
 # castling_move = Move(Position("E1"), Position("C1"), False, castle="long") 

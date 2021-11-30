@@ -8,7 +8,7 @@ from Chess.game import Game
 
 def construct_board(fen):
     params = pieces_from_fen(fen)
-    board = Board(params[0], params[1], params[5], params[2])
+    board = Board(*params)
     return board
 
 def game_end(board: Board):

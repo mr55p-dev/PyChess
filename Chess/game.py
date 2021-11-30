@@ -1,20 +1,20 @@
 from copy import copy
 import re
-from typing import Callable, List, Optional
-from Chess import Board
+import random
+from itertools import repeat
+from typing import Callable, List, Optional, Pattern, cast
+from Chess import Board, pieces
 from Chess.constants import BLACK, PIECE_TYPES, WHITE
 from Chess.coordinate import Move, Position
 from Chess.exceptions import MoveParseError
-from Chess.helpers import create_piece
-
+from Chess.helpers import create_piece, pieces_from_fen
 
 class Game():
     def __init__(self,
-                 view_callback: Optional[Callable],
+                 view_callback: Optional[Callable] = None,
                  start_state: Board = None
                  ) -> None:
         self.__history: List[Board] = []
-        self.__future:  List[Board] = []
         self.__view_callback = view_callback
 
         if start_state: board = start_state 
@@ -24,67 +24,21 @@ class Game():
 
     def __check_termination(self) -> int:
         if self.peek.is_check:
-            print("CHECK")
             return 1
         elif self.peek.is_mate:
-            print("MATE")
             return 0
         elif self.peek.is_stale:
-            print("STALEMATE")
             return 0
         else:
             return 1
-
-    @staticmethod
-    def __parse_fen(fen_string: str) -> Board:
-        fields = fen_string.split(' ')
-        if len(fields) != 6: raise ValueError("A FEN string must be space delimited with 6 arguments")
-        placement = fields[0]
-        ranks = placement.split("/")
-        # The ranks are given in reverse order, so index 0
-        # of this corresponds to i=7, or the 8th rank.
-        white_pieces = []
-        black_pieces = []
-        # Go through and decode each rank, skipping by the necessary amount of squares each time.
-        for rank, squares in enumerate(ranks):
-            i = 7 - rank
-            encoding = list(squares)
-            j = 0
-            for char in encoding:
-                if char.isdigit():
-                    j += int(char)
-                    continue
-                elif char in PIECE_TYPES:
-                    white_pieces.append(create_piece(char, WHITE, (i, j)))
-                else:
-                    black_pieces.append(create_piece(char.upper(), BLACK, (i, j)))
-
-                if j < 8:
-                    j += 1
-                else:
-                    break
-
-        next_turn = WHITE if fields[1] == 'w' else BLACK # next player to move
-        castle = fields[2] # Castling information
-        en_passant = fields[3 ] # Valid enpassant moves
-        half_moves = int(fields[4]) # Halfmove clock 2x moves since last pawn move or capture
-        n_moves = int(fields[5]) # Number of full moves
-
-        return Board((white_pieces, black_pieces), next_turn, half_moves, castle)
-
-    def __parse_castle(self, move_str: str) -> Optional[Move]:
-        pattern = r'^(O-O)(-O)?$'
-        matches = re.findall(pattern, move_str)
-        if not matches:
-            return None
-        match = matches.pop()
-        if match[0] and match[1]:
+    
+    def __parse_castle(self, castle_type: str) -> Move:
+        if castle_type == "long":
             long = True
-        elif match[0] and not match[1]:
+        elif castle_type == "short":
             long = False
         else:
-            print("Matched for a castle but with no group contents")
-            return None
+            raise ValueError("Matched for a castle but with no group contents")
 
         if self.peek.to_move:
             start_i = 0
@@ -109,17 +63,18 @@ class Game():
         return Move(start, end, takes, castles)
 
     def __parse_move(self, move_str: str) -> Move:
-        pattern = r'([KQRNB])?([a-h]\d?)?(x)?([a-z]\d)$'
+        pattern = r'([KQRNB])?([a-h]\d?)?(x)?([a-z]\d)|(O-O)(-O)?'
         matches = re.findall(pattern, move_str)
 
         if not matches:
-            castle = self.__parse_castle(move_str) 
-            if not castle:
-                raise MoveParseError("A valid move could not be found")
-            
-            return castle
+            raise ValueError("Invalid move")
             
         move_repr = matches.pop()
+
+        if move_repr[4] and move_repr[5]:
+            return self.__parse_castle('long')
+        elif move_repr[4] and not move_repr[5]:
+            return self.__parse_castle('short')
 
         takes = False
         if move_repr[2]:
@@ -127,6 +82,9 @@ class Game():
 
         if not move_repr[3]: raise MoveParseError("A valid move could not be found")
         end = Position(move_repr[3].upper())
+
+        if end in self.peek.loc_map:
+            takes = True
 
         start = move_repr[1]
         if len(start) == 2:
@@ -137,7 +95,7 @@ class Game():
             moves = self.peek.allied_moves
             moves = moves.filter_all_by_value(lambda x: x == end)
             piece_candidates = [k for k in moves if moves[k].has_passive_or_capture]
-            if piece: piece_candidates = [p for p in piece_candidates if p.kind == piece]
+            piece_candidates = [p for p in piece_candidates if p.kind == piece]
 
             if not piece_candidates:
                 raise MoveParseError(f"Not enough information to move to {end}")
@@ -157,8 +115,8 @@ class Game():
         self.push(copy(self.peek))
         return self.peek.move(move)
 
-    def __parse_pgn(self, move) -> List[Move]:
-        pass
+    # def __parse_pgn(self, move) -> List[Move]:
+    #     pass
 
     @property
     def peek(self) -> Board:
@@ -172,8 +130,8 @@ class Game():
         if self.__history: return self.__history.pop()
         else: raise ValueError("No history to pop")
 
-    def execute_pgn(self, pgn) -> bool:
-        pass
+    # def execute_pgn(self, pgn) -> bool:
+    #     pass
 
     def execute_move(self, move: Move) -> bool:
         return self.__move(move)
@@ -190,8 +148,8 @@ class Game():
             raise TypeError("view_callback must implement __call__")
         self.__view_callback(self.peek)
 
-    def fetch_moves(self, piece):
-        pass
+    # def fetch_moves(self, piece):
+    #     pass
 
     def next(self) -> None:
         pass
@@ -216,16 +174,14 @@ class Game():
         #   self.handle_signal(signal)
         pass
 
-    @property
-    def state(self) -> Board:
-        pass
-
-    @property
-    def turn(self) -> int:
-        pass
-
-    @property
-    def to_move(self) -> int:
-        pass
-
-
+#    @property
+#     def state(self) -> Board:
+#         pass
+# 
+#     @property
+#     def turn(self) -> int:
+#         pass
+# 
+#     @property
+#     def to_move(self) -> int:
+#         pass

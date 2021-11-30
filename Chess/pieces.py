@@ -181,7 +181,7 @@ class Knight(Piece):
 
 class Pawn(Piece):
     def __init__(self, colour: int, position: Position) -> None:
-        super().__init__(colour, position, kind="P", max_distance=1)
+        super().__init__(colour, position, kind="P", max_distance=2)
 
     @property
     def projections(self):
@@ -189,14 +189,33 @@ class Pawn(Piece):
         if self._colour == WHITE:
             return [
                 Vec(1, 0),
-                Vec(2, 0),
                 Vec(1, -1),
                 Vec(1, 1),
             ]
         else:
             return [
                 Vec(-1, 0),
-                Vec(-2, 0),
                 Vec(-1, -1),
                 Vec(-1, 1),
             ]
+# class Pawn(Piece):
+#     def __init__(self, colour: int, position: Position) -> None:
+#         super().__init__(colour, position, kind="P", max_distance=1)
+# 
+#     @property
+#     def projections(self):
+#         """The directions this piece can move in"""
+#         if self._colour == WHITE:
+#             return [
+#                 Vec(1, 0),
+#                 Vec(2, 0),
+#                 Vec(1, -1),
+#                 Vec(1, 1),
+#             ]
+#         else:
+#             return [
+#                 Vec(-1, 0),
+#                 Vec(-2, 0),
+#                 Vec(-1, -1),
+#                 Vec(-1, 1),
+#             ]
