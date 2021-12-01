@@ -4,6 +4,7 @@ from itertools import repeat
 from re import Pattern
 from typing import List
 from random import randint
+from Chess.__main__ import construct_board
 from Chess.state import Board
 from Chess.game import Game
 from Chess.helpers import pieces_from_fen
@@ -20,18 +21,20 @@ def read_pgn_file(filename: str) -> List[str]:
 def get_game_moves(move_str: str, expr: Pattern) -> List[str]:
     return ["".join(i) for i in expr.findall(move_str)]
 
-def get_random_boards(move_set: List[str]):
-    fens = map(get_board_fen, move_set)
-    return fens
+def get_random_boards(move_set: List[str]) -> List[Board]:
+    boards = list(map(get_board_fen, move_set))
+    return boards
 
-def get_board_fen(moves: List[str]) -> str:
-    game  = Game()
+def get_board_fen(moves: List[str]) -> Board:
+    game = Game()
     end = -10 if len(moves) > 12 else len(moves)
     moves = moves[:end]
     for move in moves:
         if not game.execute_move_str(move):
-            return game.peek.to_fen()
-    return game.peek.to_fen()
+            break
+    fen = game.peek.to_fen()
+    print(fen)
+    return game.peek
 
 def make_board(fen: str) -> Board:
     params = pieces_from_fen(fen)
@@ -40,32 +43,18 @@ def make_board(fen: str) -> Board:
 # games = read_pgn_file("./imported_games/lichess_db_standard_rated_2013-01.pgn")
 # with open("./generated_data/games", 'wb') as f:
 #     pickle.dump(list(games), f)
-
+# 
 with open("./generated_data/games", 'rb') as f:
     games: List = pickle.load(f)
 
-# game = games[2]
-# g = Game(view_board_mono)
-# for move in game:
-#     g.execute_move_str(move)
-#     g.show_board()
-#     
+# games = games
+fen_boards = list(get_random_boards(games))
 
-
-games = games[:200]
-
-fen_boards = get_random_boards(games)
-for i in fen_boards:
-    print(i)
-
-with open("./generated_data/boards.pickle", 'wb') as f:
+with open("./generated_data/all_boards.pickle", 'wb') as f:
     pickle.dump(fen_boards, f)
 
-# with open("./generated_data/boards.pickle", 'rb') as f:
-#     boards = pickle.load(f)
+with open("./generated_data/all_boards.pickle", 'rb') as f:
+    boards = pickle.load(f)
 
-# for board in boards:
-#     view_board_mono(board)
-
-
-
+for i in boards:
+    print(i.to_fen())

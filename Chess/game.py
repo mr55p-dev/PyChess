@@ -14,7 +14,7 @@ class Game():
                  view_callback: Optional[Callable] = None,
                  start_state: Board = None
                  ) -> None:
-        self.__history: List[Board] = []
+        self.__state: Optional[Board] = None
         self.__view_callback = view_callback
 
         if start_state: board = start_state
@@ -112,7 +112,6 @@ class Game():
         return Move(start, end, takes)
 
     def __move(self, move) -> bool:
-        self.push(copy(self.peek))
         return self.peek.move(move)
 
     # def __parse_pgn(self, move) -> List[Move]:
@@ -120,15 +119,15 @@ class Game():
 
     @property
     def peek(self) -> Board:
-        if self.__history: return self.__history[-1]
-        else: raise ValueError("No history to show")
+        if self.__state: return self.__state
+        else: raise ValueError("No state to show")
 
     def push(self, state: Board) -> None:
-        self.__history.append(state)
+        self.__state = state
 
-    def pop(self) -> Board:
-        if self.__history: return self.__history.pop()
-        else: raise ValueError("No history to pop")
+    # def pop(self) -> Board:
+    #     if self.__state: return self.__state.pop()
+    #     else: raise ValueError("No history to pop")
 
     # def execute_pgn(self, pgn) -> bool:
     #     pass
@@ -164,15 +163,6 @@ class Game():
             while not worked:
                 move = input("Please enter a move>> ")
                 worked = self.execute_move_str(move)
-        # Begin a game loop
-        # while running: 
-        #   # renderer
-        #   view_callback(self.state)
-        #   wait(input)
-        #   # event handler
-        #   self.execute_move(input)
-        #   self.handle_signal(signal)
-        pass
 
 #    @property
 #     def state(self) -> Board:

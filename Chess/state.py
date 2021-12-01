@@ -112,46 +112,53 @@ class Board():
             if has_moved and start_position._i - position._i in [2, -2]:
                 return MoveSignal.disallowed
 
-        Piece -> empty
-              -> allied occupied
-              -> enemy occupied
-        allowed movement capture
-        allowed movement passive
 
-        if position vaccant:
-            takes precedence
-            if passive_allowed:
-                return PASSIVE
-            elif capture allowed:
-                return ATTACK 
-        elif position allied occupied:
-            takes precedence
-            if capture allowed:
-                return DEFEND
-        elif position enemy occupied:
-            if capture allowed:
-                return CHECK or CAPTURE
-        return DISALLOWED
+        occupier = None
+        if position in self.loc_map:
+            occupier = self.loc_map[position]
 
-                
-            
-            
-
-        if position in self.loc_map.keys():
-            occupied_by = self.loc_map[position]
-            if occupied_by.colour == piece.colour: return MoveSignal.blocked
-            else:
-                if isinstance(occupied_by, King): return MoveSignal.checking_attack
-                else:
-                    if capture_allowed: return MoveSignal.capture
-                    else: return MoveSignal.disallowed
+        if not occupier:
+            if passive_allowed: return MoveSignal.empty
+            elif capture_allowed: return MoveSignal.attacks
+        elif occupier.colour == piece.colour:
+            if capture_allowed: return MoveSignal.blocked
         else:
-            if passive_allowed:
-                return MoveSignal.empty
+            if capture_allowed and isinstance(occupier, King):
+                return MoveSignal.checking_attack
             elif capture_allowed:
-                return MoveSignal.attacks
-            else:
-                return MoveSignal.disallowed
+                return MoveSignal.capture
+        return MoveSignal.disallowed
+
+#         if position vaccant:
+#             takes precedence
+#             if passive_allowed:
+#                 return PASSIVE
+#             elif capture allowed:
+#                 return ATTACK 
+#         elif position allied occupied:
+#             takes precedence
+#             if capture allowed:
+#                 return DEFEND
+#         elif position enemy occupied:
+#             if capture allowed:
+#                 return CHECK or CAPTURE
+#         return DISALLOWED
+
+        # if position in self.loc_map.keys():
+        #     occupied_by = self.loc_map[position]
+        #     if occupied_by.colour == piece.colour: return MoveSignal.blocked
+        #     else:
+        #         if isinstance(occupied_by, King): return MoveSignal.checking_attack
+        #         else:
+        #             if capture_allowed: return MoveSignal.capture
+        #             else: return MoveSignal.disallowed
+        # else:
+        #     if passive_allowed:
+        #         return MoveSignal.empty
+        #     elif capture_allowed:
+        #         return MoveSignal.attacks
+        #     else:
+        #         return MoveSignal.disallowed
 
     def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         results = ResultSet()
@@ -528,8 +535,11 @@ class Board():
         castle_rep = ["K", "Q", "k", "q"]
         can_castle = [v for i, v in enumerate(castle_rep) if self._castle[i]]
 
+        can_castle = "".join(can_castle)
+        if not can_castle: can_castle = "-"
+
         # Since i am not ready to finish FEN we will add default data to the end
-        fields.append("".join(can_castle))
+        fields.append(can_castle) # Right to castle
         fields.append("-") # En-passant right
         fields.append(str(0)) # Half move clock ish...
         fields.append(str(self._turn)) # Full move clock
@@ -566,7 +576,7 @@ class Board():
     def piece_map(self) -> Dict[Piece, Position]:
         return { piece: piece.position for piece in self.moving + self.opposing }
 
-    @property 
+    @property
     def turn(self) -> int:
         return self._turn
 
