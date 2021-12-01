@@ -3,3 +3,6 @@
 /**/__pycache__
 .vim
 .vimspector.json
+.ipynb_checkpoints/
+*.pyc
+/**/logs/
