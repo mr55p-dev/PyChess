@@ -47,7 +47,7 @@ def make_board(fen: str) -> Board:
 with open("./generated_data/games", 'rb') as f:
     games: List = pickle.load(f)
 
-# games = games
+games = games[:100]
 fen_boards = list(get_random_boards(games))
 
 with open("./generated_data/all_boards.pickle", 'wb') as f:

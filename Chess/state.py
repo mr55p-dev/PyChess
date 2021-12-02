@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from itertools import repeat
 from typing import Dict, List, Tuple
 
 from Chess.constants import BLACK, WHITE
@@ -128,37 +129,6 @@ class Board():
                 return MoveSignal.capture
         return MoveSignal.disallowed
 
-#         if position vaccant:
-#             takes precedence
-#             if passive_allowed:
-#                 return PASSIVE
-#             elif capture allowed:
-#                 return ATTACK 
-#         elif position allied occupied:
-#             takes precedence
-#             if capture allowed:
-#                 return DEFEND
-#         elif position enemy occupied:
-#             if capture allowed:
-#                 return CHECK or CAPTURE
-#         return DISALLOWED
-
-        # if position in self.loc_map.keys():
-        #     occupied_by = self.loc_map[position]
-        #     if occupied_by.colour == piece.colour: return MoveSignal.blocked
-        #     else:
-        #         if isinstance(occupied_by, King): return MoveSignal.checking_attack
-        #         else:
-        #             if capture_allowed: return MoveSignal.capture
-        #             else: return MoveSignal.disallowed
-        # else:
-        #     if passive_allowed:
-        #         return MoveSignal.empty
-        #     elif capture_allowed:
-        #         return MoveSignal.attacks
-        #     else:
-        #         return MoveSignal.disallowed
-
     def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         results = ResultSet()
         for piece in pieces:
@@ -170,49 +140,50 @@ class Board():
                 for step in range(1, piece.distance + 1):
                     # Count up all the steps the piece can take until it meets
                     # a stop condition
-                    try: landed_on = self.piece_map[piece] + (dir * step)
-                    except InvalidFormat: break
+                    loc = self.piece_map[piece]
+                    ni = loc.i + (dir.i * step)
+                    nj = loc.j + (dir.j * step)
+                    if ni > 7 or ni < 0 or nj > 7 or nj < 0: break
+                    landed_on = Position((ni, nj))
+                    # try: landed_on = self.piece_map[piece] + (dir * step)
+                    # except InvalidFormat: break
                     
-                    if (allowed:=self.__allowed_move(landed_on, piece)) == MoveSignal.empty:
+                    if (allowed:=self.__allowed_move(landed_on, piece)) == MoveSignal.empty and not pinned:
                         # Do not store this location if we are searching for a pin
-                        if pinned: continue
                         # Store this location as a passive, and an attack for pieces which are
                         # not pawns
                         if not isinstance(piece, Pawn):
                             result[ResultKeys.attack].append(landed_on)
                         result[ResultKeys.passive].append(landed_on)
-                    elif allowed == MoveSignal.capture:
+                    elif allowed == MoveSignal.capture and not pinned:
                         # Do not store a capture on a normal piece if looking for a pin
-                        if pinned: continue
                         # Store a piece which can be captured as a capture, and an attack
                         # since that square is controlled by the piece so an enemy king could not
                         # move there.
-                        result[ResultKeys.capture].append(landed_on) 
+                        result[ResultKeys.capture].append(landed_on)
                         result[ResultKeys.attack].append(landed_on)
                         # Snapshot the current location and check if this piece which can
                         # be captures is pinned to the king.
                         pinned = Position((landed_on.i, landed_on.j))
                     elif allowed == MoveSignal.checking_attack:
                         # Store a check if we are not looking for a pin
-                        if pinned: 
+                        if pinned:
                             result[ResultKeys.pin].append(pinned) 
-                            break            
-                        else:
-                            result[ResultKeys.capture].append(landed_on) 
                             break
+                        result[ResultKeys.capture].append(landed_on) 
+                        break
                     elif allowed == MoveSignal.blocked:
                         # Do not consider a piece defended if we are looking at a pin
                         if pinned: break
                         # Store a piece as defended if an allied piece sees it
                         result[ResultKeys.defend].append(landed_on)
                         break
-                    elif allowed == MoveSignal.attacks and pinned == None: 
+                    elif allowed == MoveSignal.attacks and not pinned: 
                         # Do not save an attack if we are scanning for a pin
-                        if not pinned: continue
                         # This will only ever be pawn attacks (to separate their passive
                         # capturing and non-capturing moves)
                         result[ResultKeys.attack].append(landed_on); break
-                    elif allowed == MoveSignal.disallowed: 
+                    elif allowed == MoveSignal.disallowed:
                         # Do not continue looking if a move is disallowed
                         break
 
@@ -606,4 +577,4 @@ class Board():
 
     @property
     def allied_moves(self) -> ResultSet:
-        return self.legal_moves()
+        return self._allowed_moves

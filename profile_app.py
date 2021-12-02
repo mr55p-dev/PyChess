@@ -1,8 +1,10 @@
+from Chess.game import Game
 from Chess.state import Board
 
 import cProfile, pstats
 from functools import wraps
 import datetime
+import pickle
 
 def profile(output_file=None, sort_by='cumulative', strip_dirs=False):
     """A time profiler decorator.
@@ -38,9 +40,13 @@ def profile(output_file=None, sort_by='cumulative', strip_dirs=False):
     return inner
 
 @profile(sort_by=["cumulative", "ncalls"], strip_dirs=True)
-def make_board():
-    board = Board()
-    board.calculate()
+def make_board(game):
+    g = Game()
+    for move in game:
+        g.execute_move_str(move)
 
+with open("./generated_data/games", "rb") as f:
+    li = pickle.load(f)
 
-make_board()
+game = li.pop()
+make_board(game)

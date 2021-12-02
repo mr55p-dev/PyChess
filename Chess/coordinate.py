@@ -6,12 +6,7 @@ from Chess.exceptions import InvalidFormat, InvalidVector
 
 
 class Vec:
-    VALID_RANGE = range(-8, 9)
-
     def __init__(self, i: int, j: int) -> None:
-        if i not in self.VALID_RANGE: raise InvalidVector
-        if j not in self.VALID_RANGE: raise InvalidVector
-
         self._i: int = i
         self._j: int = j
 
@@ -74,10 +69,11 @@ class Position:
         """
         if isinstance(pos, str):
             self._from_algebraic(pos)
-        elif isinstance(pos, tuple):
+        else:
             self._from_grid(pos)
 
-        self._validate_position()
+        if self._i not in cons.CART_COORD: raise InvalidFormat
+        if self._j not in cons.CART_COORD: raise InvalidFormat
 
     def _from_algebraic(self, pos: _TYPE_ALG) -> None:
         if len(pos) != 2: raise InvalidFormat
