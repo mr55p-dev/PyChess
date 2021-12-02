@@ -1,7 +1,5 @@
-from collections.abc import MutableMapping
-import re
 from itertools import repeat
-from typing import Callable, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 import math
 import Chess.constants as cons
 from Chess.exceptions import InvalidFormat, InvalidVector

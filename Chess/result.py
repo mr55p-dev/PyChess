@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from collections.abc import MutableMapping
-from typing import Any, Callable, Dict, Iterator, List, Optional, Type
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 from Chess.coordinate import Position
 from Chess.pieces import King, Piece

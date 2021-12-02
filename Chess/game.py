@@ -1,13 +1,8 @@
-from copy import copy
 import re
-import random
-from itertools import repeat
-from typing import Callable, List, Optional, Pattern, cast
-from Chess import Board, pieces
-from Chess.constants import BLACK, PIECE_TYPES, WHITE
+from typing import Callable, Optional
+from Chess import Board
 from Chess.coordinate import Move, Position
 from Chess.exceptions import MoveParseError
-from Chess.helpers import create_piece, pieces_from_fen
 
 class Game():
     def __init__(self,

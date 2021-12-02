@@ -24,26 +24,9 @@ def new_game_interactive():
         board = Board()
     game = Game(view_board_colour, start_state=board)
     game.play()
-#     view_board = view_board_colour
-#     hist = []
-#     fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-#     board = construct_board(fen)
-#     
-#     while not game_end(board):
-#         hist.append(copy(board))
-#         print(f"Turn {board.turn} - {'w' if board.to_move else 'b'} to move.")
-#         view_board(board)
-# 
-#         complete = False
-#         while not complete:
-#             move_str = input("Enter a move> ")
-#             try: move = move_from_str(move_str=move_str, board=board)
-#             except ValueError: print("wrong."); continue
-# 
-#             complete = board.move(move)
-
 
 if __name__ == "__main__":
             
-    new_game_interactive()
+    g = Game()
+    g.play()
 

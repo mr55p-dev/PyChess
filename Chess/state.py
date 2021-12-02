@@ -1,6 +1,5 @@
-from copy import copy
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from Chess.constants import BLACK, WHITE
 from Chess.coordinate import Move, Position
@@ -332,19 +331,17 @@ class Board():
         # Filter the moves 
         results = self.__filter_moves(psl)
 
-        # Sort out checking for castling (or not)
-        king = [i for i in pieces if isinstance(i, King)]
-        if not king:
-            return results
-
         # Fix the king passive moves if castling is allowed.
-        king = king.pop()
+        king = self.__get_king()
         for i in self.valid_castle():
             results[king][ResultKeys.passive].append(i)
 
         return results
 
     def calculate(self) -> None:
+        self.__loc_map = { piece.position: piece for piece in self.moving + self.opposing }
+        self.__piece_map = { piece: piece.position for piece in self.moving + self.opposing }
+
         self.__is_check = self.__evaluate_check()
 
         # Calculate the possible moves
@@ -570,11 +567,11 @@ class Board():
             return [i for i in self._white if i.is_active]
     @property
     def loc_map(self) -> Dict[Position, Piece]:
-        return { piece.position: piece for piece in self.moving + self.opposing }
+        return self.__loc_map
     
     @property
     def piece_map(self) -> Dict[Piece, Position]:
-        return { piece: piece.position for piece in self.moving + self.opposing }
+        return self.__piece_map
 
     @property
     def turn(self) -> int:

@@ -1,0 +1,20 @@
+    2: class InvalidCoordinate(ValueError):
+    1:     pass
+       
+    2: class InvalidFormat(ValueError):
+    1:     pass
+       
+    2: class InvalidVector(ValueError):
+    1:     pass
+       
+    2: class InvalidPiece(ValueError):
+    1:     pass
+       
+    2: class InvalidStartingPosition(ValueError):
+    1:     pass
+       
+    2: class InvalidStateChange(ValueError):
+    1:     pass
+       
+    2: class MoveParseError(ValueError):
+    1:     pass

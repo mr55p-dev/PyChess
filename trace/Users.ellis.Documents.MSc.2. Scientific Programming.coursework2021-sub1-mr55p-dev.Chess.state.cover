@@ -1,0 +1,614 @@
+    1: from enum import Enum, auto
+    1: from typing import Dict, List, Tuple
+       
+    1: from Chess.constants import BLACK, WHITE
+    1: from Chess.coordinate import Move, Position
+    1: from Chess.exceptions import InvalidFormat
+    1: from Chess.helpers import new_game
+    1: from Chess.pieces import King, Pawn, Piece, Rook
+    1: from Chess.result import Result, ResultKeys, ResultSet
+       
+    2: class MoveSignal(Enum):
+    1:     blocked         = 0
+    1:     capture         = 1
+    1:     empty           = 2
+    1:     checking_attack = 3
+    1:     disallowed      = 4
+    1:     attacks         = 5
+       
+       
+    2: class WinState(Enum):
+    1:     cont = auto()
+    1:     mate = auto()
+    1:     stalemate = auto()
+    1:     draw = auto()
+    1:     move_timeout = auto()
+       
+    1: def new_pieces():
+           yield new_game()
+       
+       
+    2: class Board():
+    2:     def __init__(self,
+    2:                  starting_position: Tuple[List[Piece], List[Piece]] = None,
+    2:                  to_move: int = WHITE,
+    2:                  can_castle: str = "KQkq",
+    2:                  en_passant_opts: str = "-",
+    2:                  half_moves_since_pawn: int = 0,
+    2:                  turn: int = 1,
+    1:                  ) -> None:
+       
+               # Store the fen information gi en and piece representations
+               # Construct a map of location: piece
+    1:         if starting_position: self._white, self._black = starting_position
+    1:         else: self._white, self._black = new_game()
+    1:         self._turn = turn
+       
+               # Define convenient variables so we know which pieces are moving
+    1:         self._to_move = to_move
+    1:         self._opposition = WHITE if to_move == BLACK else BLACK
+       
+               # Setup properties which we will later bind in the `calculate` function
+    1:         self.__is_check = []
+    1:         self.__win_state = WinState.cont
+    1:         self._evaluation = 0
+       
+               # This is just while castling and en-passant is not implemented
+    1:         self._castle = self.__parse_castle(can_castle) # castle[4] : white kingside, queenside, black kingside, queenside
+       
+               # self.calculate()
+       
+    1:     def __repr__(self) -> str:
+               """__repr__.
+               Provide a basic string representation of the board.
+       
+               :rtype: str
+               """
+       
+               board = [[" " for _ in range(8)] for _ in range(8)]
+               for loc, piece in self.loc_map.items():
+                   board[loc.i][loc.j] = piece.kind
+               return "\n".join([" ".join([cell for cell in row]) for row in board])
+       
+    1:     def __parse_castle(self, castle_str) -> List[bool]:
+    1:         castling = [False, False, False, False]
+    1:         if castle_str == "-": return castling
+       
+    5:         for i in castle_str:
+    4:             if i == "K": castling[0]    = True
+    3:             elif i == "Q": castling[1]  = True
+    2:             elif i == "k": castling[2]  = True
+    1:             elif i == "q": castling[3]  = True
+                   
+    1:         return castling
+       
+    1:     def __allowed_move(self, position, piece) -> MoveSignal:
+               """__allowed_move.
+               Decides if a move is valid and what type of move it is if so.
+       
+               Returns self.EMPTY if a move is allowed
+               Returns self.BLOCKED if a move is blocked by an allied piece
+               Returns self.CHECKING_ATTACK if a move is a check
+               Returns self.CAPTURE if a move is a capture
+               Returns self.DISALLOWED if a move is not allowed (such as pawn push)
+       
+               :param position:
+               :param piece:
+               """
+ 1188:         capture_allowed = True
+ 1188:         passive_allowed = True
+               # Faster than using isinstance calls
+ 1188:         if piece.kind == 'P':
+       
+  756:             start_position = self.piece_map[piece]
+                   # The pieces start at either i=1 or i=6
+  756:             start = 1 if piece.colour == WHITE else 6
+  756:             has_moved = bool(start - start_position._i)
+  756:             if start_position._j - position._j != 0:
+  468:                 passive_allowed = False
+  756:             if start_position._j - position._j == 0:
+  288:                 capture_allowed = False
+  756:             if has_moved and start_position._i - position._i in [2, -2]:
+                       return MoveSignal.disallowed
+       
+       
+ 1188:         occupier = None
+ 1188:         if position in self.loc_map:
+  360:             occupier = self.loc_map[position]
+       
+ 1188:         if not occupier:
+  828:             if passive_allowed: return MoveSignal.empty
+  468:             elif capture_allowed: return MoveSignal.attacks
+  360:         elif occupier.colour == piece.colour:
+  360:             if capture_allowed: return MoveSignal.blocked
+               else:
+                   if capture_allowed and isinstance(occupier, King):
+                       return MoveSignal.checking_attack
+                   elif capture_allowed:
+                       return MoveSignal.capture
+               return MoveSignal.disallowed
+       
+       #         if position vaccant:
+       #             takes precedence
+       #             if passive_allowed:
+       #                 return PASSIVE
+       #             elif capture allowed:
+       #                 return ATTACK 
+       #         elif position allied occupied:
+       #             takes precedence
+       #             if capture allowed:
+       #                 return DEFEND
+       #         elif position enemy occupied:
+       #             if capture allowed:
+       #                 return CHECK or CAPTURE
+       #         return DISALLOWED
+       
+               # if position in self.loc_map.keys():
+               #     occupied_by = self.loc_map[position]
+               #     if occupied_by.colour == piece.colour: return MoveSignal.blocked
+               #     else:
+               #         if isinstance(occupied_by, King): return MoveSignal.checking_attack
+               #         else:
+               #             if capture_allowed: return MoveSignal.capture
+               #             else: return MoveSignal.disallowed
+               # else:
+               #     if passive_allowed:
+               #         return MoveSignal.empty
+               #     elif capture_allowed:
+               #         return MoveSignal.attacks
+               #     else:
+               #         return MoveSignal.disallowed
+       
+    1:     def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
+   18:         results = ResultSet()
+  306:         for piece in pieces:
+  288:             result = Result()
+ 1584:             for dir in piece.projections:
+                       # Iterate over all the directions a piece can move in
+                       # Reset the pinned marker.
+ 1296:                 pinned = None
+ 2124:                 for step in range(1, piece.distance + 1):
+                           # Count up all the steps the piece can take until it meets
+                           # a stop condition
+ 1692:                     try: landed_on = self.piece_map[piece] + (dir * step)
+  504:                     except InvalidFormat: break
+                           
+ 1188:                     if (allowed:=self.__allowed_move(landed_on, piece)) == MoveSignal.empty:
+                               # Do not store this location if we are searching for a pin
+  360:                         if pinned: continue
+                               # Store this location as a passive, and an attack for pieces which are
+                               # not pawns
+  360:                         if not isinstance(piece, Pawn):
+   72:                             result[ResultKeys.attack].append(landed_on)
+  360:                         result[ResultKeys.passive].append(landed_on)
+  828:                     elif allowed == MoveSignal.capture:
+                               # Do not store a capture on a normal piece if looking for a pin
+                               if pinned: continue
+                               # Store a piece which can be captured as a capture, and an attack
+                               # since that square is controlled by the piece so an enemy king could not
+                               # move there.
+                               result[ResultKeys.capture].append(landed_on) 
+                               result[ResultKeys.attack].append(landed_on)
+                               # Snapshot the current location and check if this piece which can
+                               # be captures is pinned to the king.
+                               pinned = Position((landed_on.i, landed_on.j))
+  828:                     elif allowed == MoveSignal.checking_attack:
+                               # Store a check if we are not looking for a pin
+                               if pinned: 
+                                   result[ResultKeys.pin].append(pinned) 
+                                   break            
+                               else:
+                                   result[ResultKeys.capture].append(landed_on) 
+                                   break
+  828:                     elif allowed == MoveSignal.blocked:
+                               # Do not consider a piece defended if we are looking at a pin
+  360:                         if pinned: break
+                               # Store a piece as defended if an allied piece sees it
+  360:                         result[ResultKeys.defend].append(landed_on)
+  360:                         break
+  468:                     elif allowed == MoveSignal.attacks and pinned == None: 
+                               # Do not save an attack if we are scanning for a pin
+  468:                         if not pinned: continue
+                               # This will only ever be pawn attacks (to separate their passive
+                               # capturing and non-capturing moves)
+                               result[ResultKeys.attack].append(landed_on); break
+                           elif allowed == MoveSignal.disallowed: 
+                               # Do not continue looking if a move is disallowed
+                               break
+       
+  288:             results[piece] = result
+       
+   18:         return results
+            
+    1:     def __filter_moves(self, results: ResultSet) -> ResultSet:
+               # Fetches enemy psuedolegal moves and returns attacking pieces
+    1:         attackers = self.__is_check[:]
+    1:         king = self.__get_king()
+    1:         if len(attackers) > 1:
+                   # Remove all other piece moves
+                   not_king = [i for i in results.keys() if i != king]
+                   results.clear_set(not_king)
+       
+    1:         if king in results:
+                   # Mark the king as captured
+    1:             king.active = False
+                   
+                   # Calculate the moves for the enemy pieces without the king there
+    1:             opposing_moves = self.__psuedolegal_moves(self.opposing)
+       
+                   # Fix that
+    1:             king.active = True
+       
+                   # Filter out moves which are to spaces controlled attacks). Also
+                   # filter out captures of "defended" pieces which would result in the king being in check.
+    1:             controlled_squares = opposing_moves.all_attack + opposing_moves.all_defend
+    6:             results[king] = results[king].filter_all(lambda x: x not in controlled_squares)
+       
+    1:         attacker = None
+    1:         if len(attackers) == 1:
+                   attacker = attackers.pop()
+                   assert attacker
+       
+   17:         for piece in results.keys():
+                   # If there is only one attacker, non-king pieces can only move on the path attacker - king
+                   # If the piece is a king then fetch the king_moves from __filter_king_moves algorithm
+   16:             if piece == king:
+    1:                 continue
+   15:             if attacker:
+                       # Get the path from the attacker to the king, filter moves to only that path.
+                       path = self.piece_map[attacker].path_to(self.piece_map[king])
+                       results[piece] = results[piece].filter_valid(lambda x: x in path)
+       
+                   # Finally, if attackers <=1 resolve pins.
+   15:             opposing_moves = self.__psuedolegal_moves(self.opposing)
+   15:             pin = opposing_moves.lookup_pin(self.piece_map[piece])
+   15:             if pin:
+                       # Only valid moves for a pinned piece will be on the axis of the opposing piece
+                       # and king.
+                       path = self.piece_map[pin].path_to(self.piece_map[king])
+                       results[piece] = results[piece].filter_valid(lambda x: x in path)
+       
+    1:         return results
+       
+    2:     def __update_piece(self,
+    1:                        piece: Piece,
+                              new_position = None,
+                              is_active = None
+    1:                        ) -> None:
+       
+               if isinstance(new_position, Position):
+                   # Change this to just update the map in the future.
+                   piece._position = new_position
+               if isinstance(is_active, bool):
+                   piece.is_active = is_active
+       
+    1:     def __get_king(self) -> King:
+   54:         return [i for i in self.moving if isinstance(i, King)].pop()
+       
+    1:     def __evaluate_check(self) -> List[Piece]:
+    1:         moves = self.__psuedolegal_moves(self.opposing)
+    1:         king = self.__get_king()
+       
+    1:         king_loc = self.piece_map[king]
+    1:         moves = moves.filter_by_move_type(ResultKeys.capture, lambda x: x == king_loc)
+   18:         return [i for i in moves if moves[i][ResultKeys.capture]]
+       
+    1:     def __evaluate_mate(self) -> WinState:
+               """_evaluate_mate.
+               Will evaluate if the position is checkmate or stalemate.
+               Returns one of self.CONTINUE, self.STALEMATE or self.CHECKMATE
+       
+               :rtype: int
+               """
+       
+    1:         if not self._allowed_moves.all_valid:
+                   if self.__is_check: return WinState.mate
+                   else: return WinState.stalemate
+    1:         return WinState.cont
+       
+    1:     def _evaluate_score(self):
+               """_evaluate_score."""
+               pass
+       
+    1:     def legal_moves(self, pieces: list[Piece] = None) -> ResultSet:
+               """get_move_set.
+               Wrapper to get a set of moves instead of just those for a singular piece. Works only with
+               the side "moving".
+       
+               :param self:
+               :param pieces:
+               :type pieces: list[Piece]
+               :rtype: ResultSet
+               """
+               # Either use all the moving pieces, or the list of pieces
+               # passed which also exist in the moving side.
+    1:         if not pieces: pieces = self.moving
+   18:         else: pieces = [i for i in pieces if i in self.moving]
+       
+               # Get psuedolegal moves for allied pieces
+    1:         psl = self.__psuedolegal_moves(pieces)
+       
+               # Filter the moves 
+    1:         results = self.__filter_moves(psl)
+       
+               # Sort out checking for castling (or not)
+   18:         king = [i for i in pieces if isinstance(i, King)]
+    1:         if not king:
+                   return results
+       
+               # Fix the king passive moves if castling is allowed.
+    1:         king = king.pop()
+    1:         for i in self.valid_castle():
+                   results[king][ResultKeys.passive].append(i)
+       
+    1:         return results
+       
+    1:     def calculate(self) -> None:
+   34:         self.__loc_map = { piece.position: piece for piece in self.moving + self.opposing }
+   34:         self.__piece_map = { piece: piece.position for piece in self.moving + self.opposing }
+       
+    1:         self.__is_check = self.__evaluate_check()
+       
+               # Calculate the possible moves
+    1:         self._allowed_moves = self.legal_moves(self.moving)
+       
+    1:         self.__win_state = self.__evaluate_mate()
+       
+    1:     def valid_castle(self) -> List[Position]:
+               """
+               Case right to castle is not true:
+                   No move
+               Case in check:
+                   No move
+               Case king not on start:
+                   No move
+               Case Rook not on start:
+                   No move
+               Case Any square between king and rook occupied:
+                   No move
+               Case Attack on any square in castle path:
+                   No move
+       
+               Allow castle
+               Add move to king passives
+       
+               - Listen for O-O or O-O-O
+               - For WHITE: (king then rook)
+                   CASTLE_LONG  = (G1, F1)
+                   CASTLE_SHORT = (C1, D1)
+               - For BLACK:
+                   CASTLE_LONG  = (G8, F8)
+                   CASTLE_SHORT = (C8, D8)
+               - Check if castling is valid ^
+               - Do the move
+               - Update the right to castle for this side.
+               """ 
+    1:         if self._to_move:
+    1:             castle_short = self._castle[0]
+    1:             castle_long  = self._castle[1]
+       
+    1:             king_start = Position("E1")
+       
+    1:             rook_short = Position("H1")
+    1:             rook_long  = Position("A1")
+               else:
+                   castle_short = self._castle[2]
+                   castle_long  = self._castle[3]
+       
+                   king_start = Position("E8")
+       
+                   rook_short = Position("H8")
+                   rook_long  = Position("A8")
+       
+    1:         if not (castle_short or castle_long):
+                   return []
+       
+    1:         if self.__is_check:
+                   return []
+       
+    1:         king = self.__get_king()
+    1:         if self.piece_map[king] != king_start:
+                   return []
+       
+    1:         if castle_long and castle_short:
+    1:             rooks = [rook_short, rook_long]
+               elif castle_long:
+                   rooks = [rook_long]
+               else:
+                   rooks = [rook_short]
+       
+    1:         valid = []
+    3:         for rook in rooks:
+    2:             if rook not in self.loc_map:
+                       continue
+       
+    2:             if not isinstance(self.loc_map[rook], Rook):
+                       continue
+       
+    2:             path = self.piece_map[king].path_to(rook)
+   11:             path = [i for i in path if i != self.piece_map[king]]
+    9:             if [i for i in path if i in self.loc_map]:
+    2:                 continue
+       
+                   enemy_moves = self.__psuedolegal_moves(self.opposing)
+                   if [i for i in path if i in enemy_moves.all_valid + enemy_moves.all_attack]:
+                       continue
+       
+       
+                   final = [king_start.i, king_start.j]
+                   if rook.j == 0:
+                       final[1] = final[1] - 2
+                   else:
+                       final[1] = final[1] + 2
+       
+                   final = (final[0], final[1])
+                       
+                   valid.append(Position(final))
+       
+    1:         return valid
+       
+    1:     def move(self, mov: Move) -> bool:
+               """Runs a move in the current state. Takes a `Move` object.
+               This method does NOT implement full validity checks. Raises `InvalidStateChange` exception.
+       
+               :param self:
+               :param mov:
+               :type mov: Move
+               """
+       
+               if mov.start not in self.loc_map:
+                   print("Start is not a piece")
+                   return False
+       
+               # Set the new position
+               moving_piece = self.loc_map[mov.start]
+               self.__update_piece(moving_piece, new_position=mov.end)
+       
+               # Check if the move is a castle
+               if mov.is_castle:
+                   # Validate if the castle is allowed
+                   rook_i = mov.start.i
+                   # Set long or short castle
+                   if mov.is_castle == "short":
+                       rook_j = 7
+                       rook_end_j = 5
+                   elif mov.is_castle == "long":
+                       rook_j = 0
+                       rook_end_j = 3
+                   else:
+                       raise Exception()
+                   rook = self.loc_map[Position((rook_i, rook_j))]
+                   rook_end = Position((rook_i, rook_end_j))
+                   self.__update_piece(rook, rook_end)
+                   if self._to_move:
+                       self._castle[0] = False
+                       self._castle[1] = False
+                   else:
+                       self._castle[2] = False
+                       self._castle[3] = False
+       
+               # Remove captured pieces so they dont remain forever.
+               if mov.takes:
+                   captured = self.loc_map[mov.end]
+                   self.__update_piece(captured, is_active=False)
+       
+               if self._to_move:
+                   self._to_move = BLACK
+               else:
+                   self._to_move = WHITE
+                   self._turn = self._turn + 1
+       
+               self.calculate()
+               return True
+       
+       
+    1:     def to_fen(self) -> str:
+               fields = []
+               ranks = [["" for _ in range(8)] for _ in range(8)]
+               # The rank of a piece will be calculated as 7 - i; 
+               # In FEN the 8th rank (list index 7) is at i=0
+               for position, piece in self.loc_map.items():
+                   symbol = piece.kind
+                   if piece.colour == BLACK: symbol = symbol.lower()
+                   ranks[7-position.i][position.j] = symbol
+               # Reduce the ranks down to proper notation
+               # Hacky but itll do
+               irreducable_ranks = []
+               for rank in ranks:
+                   new_rank = []
+                   counter = 0
+                   for iter, char in enumerate(rank):
+                       if not char:
+                           counter += 1
+                       if char and counter:
+                           new_rank.append(str(counter))
+                           counter = 0
+                       elif iter == 7 and counter > 0:
+                           new_rank.append(str(counter))
+                           continue
+                       new_rank.append(char)
+                   irreducable_ranks.append("".join(new_rank))
+               
+               fields.append("/".join(irreducable_ranks))
+               
+               next_move = "w" if self._to_move == WHITE else 'b'
+               fields.append(next_move)
+       
+               castle_rep = ["K", "Q", "k", "q"]
+               can_castle = [v for i, v in enumerate(castle_rep) if self._castle[i]]
+       
+               can_castle = "".join(can_castle)
+               if not can_castle: can_castle = "-"
+       
+               # Since i am not ready to finish FEN we will add default data to the end
+               fields.append(can_castle) # Right to castle
+               fields.append("-") # En-passant right
+               fields.append(str(0)) # Half move clock ish...
+               fields.append(str(self._turn)) # Full move clock
+               return " ".join(fields)
+       
+    1:     @property
+    1:     def moving(self) -> List[Piece]:
+               """_get_moving.
+               Returns the active pieces moving in this state.
+       
+               :rtype: List[Piece]
+               """
+   22:         if self._to_move == BLACK:
+                   return [i for i in self._black if i.is_active]
+               else:
+  396:             return [i for i in self._white if i.is_active]
+       
+    1:     @property
+    1:     def opposing(self) -> List[Piece]:
+               """_get_opposing.
+               Returns the active pieces not moving in this state.
+       
+               :rtype: List[Piece]
+               """
+   19:         if self._to_move == WHITE:
+  342:             return [i for i in self._black if i.is_active]
+               else:
+                   return [i for i in self._white if i.is_active]
+    1:     @property
+    1:     def loc_map(self) -> Dict[Position, Piece]:
+ 1557:         return self.__loc_map
+           
+    1:     @property
+    1:     def piece_map(self) -> Dict[Piece, Position]:
+ 2474:         return self.__piece_map
+       
+    1:     @property
+    1:     def turn(self) -> int:
+               return self._turn
+       
+    1:     @property
+    1:     def pos_map(self) -> dict:
+               """Convenience attribute
+               Returns a hash map of each occupied position and its associated piece"""
+               return self.loc_map
+       
+    1:     @property
+    1:     def pieces(self) -> list:
+               return self._black + self._white
+       
+    1:     @property
+    1:     def is_check(self) -> List[Piece]:
+               return self.__is_check
+       
+    1:     @property
+    1:     def is_mate(self) -> bool:
+               return self.__win_state == WinState.mate
+           
+    1:     @property
+    1:     def is_stale(self) -> bool:
+               return self.__win_state == WinState.stalemate
+           
+    1:     @property
+    1:     def to_move(self) -> int:
+               """to_move."""
+               return self._to_move
+       
+    1:     @property
+    1:     def allied_moves(self) -> ResultSet:
+               return self.legal_moves()

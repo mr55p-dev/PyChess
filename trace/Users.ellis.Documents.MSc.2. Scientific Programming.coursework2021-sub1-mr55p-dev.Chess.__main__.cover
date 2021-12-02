@@ -1,0 +1,32 @@
+    1: from copy import copy
+    1: from Chess import view
+    1: from Chess.helpers import move_from_str, pieces_from_fen
+    1: from Chess.state import Board
+    1: from Chess.view import view_board_colour  
+    1: from Chess.game import Game
+       
+       
+    1: def construct_board(fen):
+           params = pieces_from_fen(fen)
+           board = Board(*params)
+           return board
+       
+    1: def game_end(board: Board):
+           if board.is_mate or board.is_stale:
+               return True
+           else:
+               return False
+       
+    1: def new_game_interactive():
+           if (x:=input(">>> ")):
+               board = construct_board(x)
+           else:
+               board = Board()
+           game = Game(view_board_colour, start_state=board)
+           game.play()
+       
+    1: if __name__ == "__main__":
+                   
+           g = Game()
+           g.play()
+       
