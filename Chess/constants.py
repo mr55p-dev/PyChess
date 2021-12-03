@@ -27,3 +27,47 @@ REV_FILES = {
 }
 
 PIECE_TYPES = ["K", "Q", "R", "N", "B", "P"]
+
+class BaseEnum:
+    __slots__ = ()
+
+    def __iter__(self):
+        return iter(self.__slots__)
+
+class MoveSignal(BaseEnum):
+    __slots__ = ('blocked', 'capture', 'empty', 'checking_attack', 'disallowed', 'attacks')
+
+    def __init__(self) -> None:
+        blocked         = 0
+        capture         = 1
+        empty           = 2
+        checking_attack = 3
+        disallowed      = 4
+
+class WinState():
+    __slots__ = ('cont', 'mate', 'stalemate', 'draw', 'move_timeout',)
+
+    def __init__(self) -> None:
+        cont = 1
+        mate = 2
+        stalemate = 3
+        draw = 4
+        move_timeout = 5
+
+class ResultKeys():
+    """
+    Enum iteration is VERY slow
+    We can replace it with a base class that defines a slot for each key,
+    returns an itertor of those keys for __iter__ and defines a unique value for
+    each of them which is used as the key in the Results store dict"""
+
+    __slots__ = ('passive', 'capture', 'attack', 'defend', 'pin')
+    def __init__(self):
+        passive = 1
+        capture = 2
+        attack = 3
+        defend = 4
+        pin = 5
+
+    def __iter__(self):
+        return iter(self.__slots__)

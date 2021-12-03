@@ -1,29 +1,12 @@
-from enum import Enum, auto
-from itertools import repeat
 from typing import Dict, List, Tuple
 
-from Chess.constants import BLACK, WHITE
+from Chess.constants import BLACK, WHITE, MoveSignal, WinState
 from Chess.coordinate import Move, Position
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
 from Chess.pieces import King, Pawn, Piece, Rook
 from Chess.result import Result, ResultKeys, ResultSet
 
-class MoveSignal(Enum):
-    blocked         = 0
-    capture         = 1
-    empty           = 2
-    checking_attack = 3
-    disallowed      = 4
-    attacks         = 5
-
-
-class WinState(Enum):
-    cont = auto()
-    mate = auto()
-    stalemate = auto()
-    draw = auto()
-    move_timeout = auto()
 
 def new_pieces():
     yield new_game()
