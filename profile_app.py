@@ -40,13 +40,14 @@ def profile(output_file=None, sort_by='cumulative', strip_dirs=False):
     return inner
 
 @profile(sort_by=["cumulative", "ncalls"], strip_dirs=True)
-def make_board(game):
-    g = Game()
-    for move in game:
-        g.execute_move_str(move)
+def make_board(games):
+    for game in games:
+        g = Game()
+        for move in game:
+            g.execute_move_str(move)
 
 with open("./generated_data/games", "rb") as f:
     li = pickle.load(f)
 
-game = li.pop()
-make_board(game)
+games= li[:5]
+make_board(games)

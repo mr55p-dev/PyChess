@@ -10,11 +10,6 @@ def test_vec_instantiation(i, j):
     Vec(i, j)
 
 invalid_vectors = [(-10, -10), ("", ""), (1, None), (10, 10)]
-@pytest.mark.parametrize("i,j", invalid_vectors)
-def test_vec_invalid_instantiation(i, j):
-    with pytest.raises(InvalidVector):
-        Vec(i, j)
-
 valid_sum_vectors = [(0, 0), (1, 0), (4, 4), (0, -4), (1, 1), (-1, -1)]
 
 @pytest.mark.parametrize("i,j", valid_sum_vectors)

@@ -1,4 +1,5 @@
 from itertools import repeat
+from pickle import HIGHEST_PROTOCOL
 from typing import List, Tuple, Union
 import math
 import Chess.constants as cons
@@ -6,6 +7,8 @@ from Chess.exceptions import InvalidFormat, InvalidVector
 
 
 class Vec:
+    __slots__ = ('_i', '_j')
+
     def __init__(self, i: int, j: int) -> None:
         self._i: int = i
         self._j: int = j
@@ -53,6 +56,9 @@ class Position:
     relating them to matrix notation feels more familiar.
     - consider implementing __slots__
     """
+
+    __slots__ = ('_i', '_j')
+
     _TYPE_ALG = str
     _TYPE_CAR = Tuple[int, int]
     _TYPE_INI = Union[str, Tuple[int, int]]
@@ -72,26 +78,34 @@ class Position:
         else:
             self._from_grid(pos)
 
-        if self._i not in cons.CART_COORD: raise InvalidFormat
-        if self._j not in cons.CART_COORD: raise InvalidFormat
+        # if self._i not in cons.CART_COORD: print(self._i); raise InvalidFormat
+        # if self._j not in cons.CART_COORD: raise InvalidFormat
 
     def _from_algebraic(self, pos: _TYPE_ALG) -> None:
         if len(pos) != 2: raise InvalidFormat
-        file = pos[0]
-        # convert rank to numeric
-        try:
-            rank = int(pos[1])
-        except ValueError:
-            raise InvalidFormat
-        rank -= 1
-        # convert file to numeric
-        try:
-            file = cons.REV_FILES[file]
-        except KeyError:
-            raise InvalidFormat
-
-        self._i = rank
-        self._j = file
+    
+        # file 0  A   65
+        #      1  B   66
+        #      2  C   67
+        #      ...
+        #      7  H   72
+        self._i = int(pos[1]) - 1
+        self._j = ord(pos[0]) - 65 # Using ASCII character codes to revert capital letters back to numbers.
+#         file = pos[0]
+#         # convert rank to numeric
+#         try:
+#             rank = int(pos[1])
+#         except ValueError:
+#             raise InvalidFormat
+#         rank -= 1
+#         # convert file to numeric
+#         try:
+#             file = cons.REV_FILES[file]
+#         except KeyError:
+#             raise InvalidFormat
+# 
+#         self._i = rank
+#         self._j = file
 
     def _from_grid(self, pos: _TYPE_CAR) -> None:
         """Load in rows and columns from a tuple"""
@@ -110,8 +124,10 @@ class Position:
 
     def __eq__(self, o) -> bool:
         """Support testing equality between two instances of this class"""
-        if isinstance(o, Position): return self.algebraic == o.algebraic
-        else: return self.__hash__() == o
+        # if isinstance(o, Position): return self.algebraic == o.algebraic
+        # Optimisation for the purpose of data generation - might remove since calling__hash__ 
+        # directly feels almost wrong...
+        return self.__hash__() == o.__hash__()
 
     def __ne__(self, o: 'Position') -> bool:
         """Support testing equality between two instances of this class"""
@@ -177,6 +193,9 @@ class Position:
 
 
 class Move():
+    
+    __slots__ = ('__start', '__end', '__takes', '__is_castle')
+
     def __init__(self, 
                  start: Position, 
                  end: Position, 

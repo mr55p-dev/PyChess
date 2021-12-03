@@ -130,7 +130,8 @@ class Board():
         return MoveSignal.disallowed
 
     def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
-        results = ResultSet()
+        # Preallocate the dict to hpoefully speed things up a bit
+        results = ResultSet(dict.fromkeys(pieces))
         for piece in pieces:
             result = Result()
             for dir in piece.projections:
@@ -147,15 +148,17 @@ class Board():
                     landed_on = Position((ni, nj))
                     # try: landed_on = self.piece_map[piece] + (dir * step)
                     # except InvalidFormat: break
-                    
-                    if (allowed:=self.__allowed_move(landed_on, piece)) == MoveSignal.empty and not pinned:
+                    allowed = self.__allowed_move(landed_on, piece)
+
+                    # Reordered expressions to make use of short-circuiting
+                    if not pinned and allowed == MoveSignal.empty :
                         # Do not store this location if we are searching for a pin
                         # Store this location as a passive, and an attack for pieces which are
                         # not pawns
                         if not isinstance(piece, Pawn):
                             result[ResultKeys.attack].append(landed_on)
                         result[ResultKeys.passive].append(landed_on)
-                    elif allowed == MoveSignal.capture and not pinned:
+                    elif not pinned and allowed == MoveSignal.capture:
                         # Do not store a capture on a normal piece if looking for a pin
                         # Store a piece which can be captured as a capture, and an attack
                         # since that square is controlled by the piece so an enemy king could not
@@ -165,6 +168,11 @@ class Board():
                         # Snapshot the current location and check if this piece which can
                         # be captures is pinned to the king.
                         pinned = Position((landed_on.i, landed_on.j))
+                    elif not pinned and allowed == MoveSignal.attacks: 
+                        # Do not save an attack if we are scanning for a pin
+                        # This will only ever be pawn attacks (to separate their passive
+                        # capturing and non-capturing moves)
+                        result[ResultKeys.attack].append(landed_on); break
                     elif allowed == MoveSignal.checking_attack:
                         # Store a check if we are not looking for a pin
                         if pinned:
@@ -178,11 +186,6 @@ class Board():
                         # Store a piece as defended if an allied piece sees it
                         result[ResultKeys.defend].append(landed_on)
                         break
-                    elif allowed == MoveSignal.attacks and not pinned: 
-                        # Do not save an attack if we are scanning for a pin
-                        # This will only ever be pawn attacks (to separate their passive
-                        # capturing and non-capturing moves)
-                        result[ResultKeys.attack].append(landed_on); break
                     elif allowed == MoveSignal.disallowed:
                         # Do not continue looking if a move is disallowed
                         break

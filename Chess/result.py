@@ -15,19 +15,31 @@ class ResultKeys(Enum):
 
 
 class BaseResult(MutableMapping):
+    __slots__ = ('store')
+
     @staticmethod
     def flatten(l: List[List[Any]]) -> List[Any]:
         return [j for i in l for j in i]
 
 
 class Result(BaseResult):
+    __slots__ = ()
     _KT = ResultKeys
     _VT = List[Position]
 
     def __init__(self, res: Dict[_KT, _VT] = {}) -> None:
-        self.store = res
-        if not res:
-            self.store = {k: [] for k in ResultKeys}
+        # I am aware this isnt hugely pythonic, however
+        # Result is constructed over 50k times in some runs,
+        # so getting it to be quick is quite important.
+        self.store = {
+            ResultKeys.passive: [],
+            ResultKeys.capture: [],
+            ResultKeys.attack:  [],
+            ResultKeys.defend:  [],
+            ResultKeys.pin:     []
+        }
+        if res:
+            self.store = res
 
     def __delitem__(self, v: _KT) -> None:
         del self.store[v]
@@ -73,15 +85,15 @@ class Result(BaseResult):
     def has_passive_or_capture(self) -> bool:
         if self.store[ResultKeys.capture] or self.store[ResultKeys.passive]:
             return True
+        return False
 
 class ResultSet(BaseResult):
+    __slots__ = ()
     _KT = Piece
     _VT = Result
 
     def __init__(self, mapping: Dict[_KT, _VT] = {}) -> None:
         self.store = mapping
-        if not mapping:
-            self.store = dict()
 
     def __len__(self) -> int:
         return len(self.store)
@@ -157,7 +169,6 @@ class ResultSet(BaseResult):
         
     # This should be redundant
     def lookup_kind(self, kind_str: str) -> 'ResultSet':
-        pieces = [k for k in self.store if k.kind == kind_str]
         empty_set = ResultSet()
         for k in self.store:
             if k.kind == kind_str:
