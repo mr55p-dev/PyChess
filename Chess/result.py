@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from fastenum import Enum
 from collections.abc import MutableMapping
 from typing import Any, Callable, Dict, Iterator, List, Optional
 
@@ -6,12 +6,23 @@ from Chess.coordinate import Position
 from Chess.pieces import King, Piece
 
 
-class ResultKeys(Enum):
-    passive = auto()
-    capture = auto()
-    attack = auto()
-    defend = auto()
-    pin = auto()
+class ResultKeys():
+    """
+    Enum iteration is VERY slow
+    We can replace it with a base class that defines a slot for each key,
+    returns an itertor of those keys for __iter__ and defines a unique value for
+    each of them which is used as the key in the Results store dict"""
+
+    __slots__ = ('passive', 'capture', 'attack', 'defend', 'pin')
+    def __init__(self):
+        passive = 1
+        capture = 2
+        attack = 3
+        defend = 4
+        pin = 5
+
+    def __iter__(self):
+        return iter(self.__slots__)
 
 
 class BaseResult(MutableMapping):
