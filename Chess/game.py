@@ -93,6 +93,8 @@ class Game():
             piece_candidates = [p for p in piece_candidates if p.kind == piece]
 
             if not piece_candidates:
+                # Add logging here
+                return None
                 raise MoveParseError(f"Not enough information to move to {end}")
             elif len(piece_candidates) > 1:
                 # Hacky way to check the same file
@@ -101,7 +103,9 @@ class Game():
                               if str(self.peek.piece_map[i])[0] == start.upper()
                             ]
                 if not len(piece_candidates) == 1:
-                    raise MoveParseError(f"Multiple pieces may move to {end}")
+                    # Add logging
+                    return None
+                    # raise MoveParseError(f"Multiple pieces may move to {end}")
             start = self.peek.piece_map[piece_candidates.pop()]
 
         return Move(start, end, takes)
@@ -131,10 +135,11 @@ class Game():
         return self.__move(move)
 
     def execute_move_str(self, move_str: str) -> bool:
-        try: move = self.__parse_move(move_str)
-        except MoveParseError as e:
-            print(e)
-            return False
+        move = self.__parse_move(move_str)
+        if not move: return False
+        # except MoveParseError as e:
+            # Logging here
+            # return False
         return self.__move(move)
 
     def show_board(self):

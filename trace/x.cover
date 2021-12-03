@@ -1,4 +1,0 @@
-    1: from Chess import Board
-       
-    1: b = Board()
-    1: b.calculate()

@@ -9,6 +9,7 @@ from Chess.state import Board
 from Chess.game import Game
 from Chess.helpers import pieces_from_fen
 from Chess.view import view_board_colour, view_board_mono
+from tqdm import tqdm
 
 def read_pgn_file(filename: str) -> List[str]:
     with open(filename, 'r') as pgn_file:
@@ -21,20 +22,18 @@ def read_pgn_file(filename: str) -> List[str]:
 def get_game_moves(move_str: str, expr: Pattern) -> List[str]:
     return ["".join(i) for i in expr.findall(move_str)]
 
-def get_random_boards(move_set: List[str]) -> List[Board]:
+def get_random_boards(move_set: List[str]) -> List[str]:
     boards = list(map(get_board_fen, move_set))
     return boards
 
-def get_board_fen(moves: List[str]) -> Board:
+def get_board_fen(moves: List[str]) -> str:
     game = Game()
-    end = -10 if len(moves) > 12 else len(moves)
+    end = -20 if len(moves) > 12 else len(moves)
     moves = moves[:end]
     for move in moves:
         if not game.execute_move_str(move):
             break
-    fen = game.peek.to_fen()
-    print(fen)
-    return game.peek
+    return game.peek.to_fen() 
 
 def make_board(fen: str) -> Board:
     params = pieces_from_fen(fen)
@@ -43,18 +42,14 @@ def make_board(fen: str) -> Board:
 # games = read_pgn_file("./imported_games/lichess_db_standard_rated_2013-01.pgn")
 # with open("./generated_data/games", 'wb') as f:
 #     pickle.dump(list(games), f)
-# 
+ 
 with open("./generated_data/games", 'rb') as f:
     games: List = pickle.load(f)
 
-games = games[:100]
-fen_boards = list(get_random_boards(games))
+with open("./generated_data/all_boards.txt", 'w', newline='') as f:
+    for game in tqdm(games):
+        fen = get_board_fen(game)
+        f.write(fen + '\n')
 
 with open("./generated_data/all_boards.pickle", 'wb') as f:
     pickle.dump(fen_boards, f)
-
-with open("./generated_data/all_boards.pickle", 'rb') as f:
-    boards = pickle.load(f)
-
-for i in boards:
-    print(i.to_fen())

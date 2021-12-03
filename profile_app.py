@@ -49,5 +49,5 @@ def make_board(games):
 with open("./generated_data/games", "rb") as f:
     li = pickle.load(f)
 
-games= li[:5]
+games= li[:50]
 make_board(games)
