@@ -87,12 +87,12 @@ class Board():
             start_position = self.piece_map[piece]
             # The pieces start at either i=1 or i=6
             start = 1 if piece.colour == WHITE else 6
-            has_moved = bool(start - start_position._i)
-            if start_position._j - position._j != 0:
+            has_moved = bool(start - start_position.i)
+            if start_position.j - position.j != 0:
                 passive_allowed = False
-            if start_position._j - position._j == 0:
+            if start_position.j - position.j == 0:
                 capture_allowed = False
-            if has_moved and start_position._i - position._i in [2, -2]:
+            if has_moved and start_position.i - position.i in [2, -2]:
                 return MoveSignal.disallowed
 
 

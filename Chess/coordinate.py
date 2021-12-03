@@ -7,37 +7,37 @@ from Chess.exceptions import InvalidFormat, InvalidVector
 
 
 class Vec:
-    __slots__ = ('_i', '_j')
+    __slots__ = ('i', 'j')
 
     def __init__(self, i: int, j: int) -> None:
-        self._i: int = i
-        self._j: int = j
+        self.i: int = i
+        self.j: int = j
 
     def __repr__(self) -> str:
-        return str((self._i, self._j))
+        return str((self.i, self.j))
 
     def __eq__(self, o) -> bool:
-        return self._i == o.i and self._j == o.j
+        return self.i == o.i and self.j == o.j
 
     def __ne__(self, o) -> bool:
-        return self._i != o.i and self._j != o.j
+        return self.i != o.i and self.j != o.j
 
     def __add__(self, o) -> 'Vec':
-        return Vec(self._i + o.i, self._j + o.j)
+        return Vec(self.i + o.i, self.j + o.j)
 
     def __sub__(self, o) -> 'Vec':
-        return Vec(self._i - o.i, self._j - o.j)
+        return Vec(self.i - o.i, self.j - o.j)
 
     def __mul__(self, scalar) -> 'Vec':
-        return Vec(self._i * scalar, self._j * scalar)
+        return Vec(self.i * scalar, self.j * scalar)
 
-    @property
-    def i(self) -> int:
-        return self._i
-
-    @property
-    def j(self) -> int:
-        return self._j
+#     @property
+#     def i(self) -> int:
+#         return self.i
+# 
+#     @property
+#     def j(self) -> int:
+#         return self.j
 
 
 class Position:
@@ -57,7 +57,7 @@ class Position:
     - consider implementing __slots__
     """
 
-    __slots__ = ('_i', '_j')
+    __slots__ = ('i', 'j')
 
     _TYPE_ALG = str
     _TYPE_CAR = Tuple[int, int]
@@ -89,33 +89,18 @@ class Position:
         #      2  C   67
         #      ...
         #      7  H   72
-        self._i = int(pos[1]) - 1
-        self._j = ord(pos[0]) - 65 # Using ASCII character codes to revert capital letters back to numbers.
-#         file = pos[0]
-#         # convert rank to numeric
-#         try:
-#             rank = int(pos[1])
-#         except ValueError:
-#             raise InvalidFormat
-#         rank -= 1
-#         # convert file to numeric
-#         try:
-#             file = cons.REV_FILES[file]
-#         except KeyError:
-#             raise InvalidFormat
-# 
-#         self._i = rank
-#         self._j = file
+        self.i = int(pos[1]) - 1
+        self.j = ord(pos[0]) - 65 # Using ASCII character codes to revert capital letters back to numbers.
 
     def _from_grid(self, pos: _TYPE_CAR) -> None:
         """Load in rows and columns from a tuple"""
-        self._i = pos[0]
-        self._j = pos[1]
+        self.i = pos[0]
+        self.j = pos[1]
 
     def _validate_position(self) -> bool:
         """Validate that the current position is on the board"""
-        if self._i not in cons.CART_COORD: raise InvalidFormat
-        if self._j not in cons.CART_COORD: raise InvalidFormat
+        if self.i not in cons.CART_COORD: raise InvalidFormat
+        if self.j not in cons.CART_COORD: raise InvalidFormat
         return True
 
     def __repr__(self) -> str:
@@ -136,11 +121,11 @@ class Position:
     
     def __add__(self, o: Vec) -> 'Position':
         """Support addition by a vector Vec"""
-        return Position((self._i + o.i, self._j + o.j))
+        return Position((self.i + o.i, self.j + o.j))
 
     def __sub__(self, o: Union[Vec, 'Position']) -> 'Position':
         """Support subtraction by a vector Vec"""
-        return Position((self._i - o.i, self._j - o.j))
+        return Position((self.i - o.i, self.j - o.j))
 
     def path_to(self, o: 'Position') -> List['Position']:
         """path_to. Calculates the squares from this position to another position.
@@ -151,25 +136,25 @@ class Position:
         :rtype: List['Position']
         """
         sign = lambda x: int(math.copysign(1, x))
-        di = o._i - self._i
-        dj = o._j - self._j
-        ri = range(self._i, o._i, sign(di))
-        rj = range(self._j, o._j, sign(dj))
+        di = o.i - self.i
+        dj = o.j - self.j
+        ri = range(self.i, o.i, sign(di))
+        rj = range(self.j, o.j, sign(dj))
         # If there is a straight or diagonal path between the pieces then give that
         if len(ri) == len(rj): 
             return [Position((i, j)) for i, j in zip(ri, rj)]
         elif len(ri) == 0:
-            return [Position((i, j)) for i, j in zip(repeat(self._i), rj)]
+            return [Position((i, j)) for i, j in zip(repeat(self.i), rj)]
         elif len(rj) == 0:
-            return [Position((i, j)) for i, j in zip(ri, repeat(self._j))]
+            return [Position((i, j)) for i, j in zip(ri, repeat(self.j))]
         # Else just give the original location (used for the path of knights)
-        else: return [Position((self._i, self._j))]
+        else: return [Position((self.i, self.j))]
 
     def __hash__(self) -> int:
         """Generate a hash of the position
         allows positions to be the key of the _loc_map dict in 
         `Game`"""
-        return 10*self._i + self._j
+        return 10*self.i + self.j
 
     @property
     def algebraic(self) -> str:
@@ -177,19 +162,19 @@ class Position:
         :param self:
         :rtype: str
         """
-        return cons.FILES[self._j] + str(self._i + 1)
+        return cons.FILES[self.j] + str(self.i + 1)
 
     @property
     def grid(self) -> Tuple[int, int]:  
-        return self._i, self._j 
+        return self.i, self.j 
 
-    @property
-    def i(self) -> int:
-        return self._i
-
-    @property
-    def j(self) -> int:
-        return self._j
+#     @property
+#     def i(self) -> int:
+#         return self.i
+# 
+#     @property
+#     def j(self) -> int:
+#         return self.j
 
 
 class Move():
