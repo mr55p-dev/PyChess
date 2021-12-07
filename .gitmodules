@@ -1,3 +1,4 @@
 [submodule "vendor/pychessbinds"]
 	path = vendor/pychessbinds
 	url = https://github.com/mr55p-dev/pychessbinds.git
+	branch = master
