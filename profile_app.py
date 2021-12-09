@@ -46,7 +46,7 @@ def make_board(games):
         for move in game:
             g.execute_move_str(move)
 
-with open("./generated_data/games", "rb") as f:
+with open("./generated_data/games.pickle", "rb") as f:
     li = pickle.load(f)
 
 games= li[:50]

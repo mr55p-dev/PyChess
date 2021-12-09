@@ -15,9 +15,11 @@ false_checkmate_fen = "r1bq1rk1/ppp3pp/5n2/3Nnp2/8/3Q1NP1/PPP1PP1P/2KR1B1R w - -
 missed_b4_fen = "8/3B2p1/8/2k2R2/4P3/1P1K2P1/2P4P/8 b - - 0 1"
 problematic_queen_fen = "r2kQb1r/pbpp3p/1pn1p3/7B/3PP2q/P1N5/1PP2PPP/R3K2R b KQ - 2 13"
 
-start = construct_board(problematic_queen_fen)
+start = construct_board(starting_fen)
 game = Game(view_board_mono, start_state=start)
 game.show_board()
+game.execute_move_str("d3")
+game.execute_move_str("d6")
 
 # castling_move = Move(Position("E1"), Position("C1"), False, castle="long") 
 # board = construct_board(white_can_castle_fen)

@@ -43,6 +43,7 @@ class MoveSignal(BaseEnum):
         empty           = 2
         checking_attack = 3
         disallowed      = 4
+        attacks         = 5
 
 class WinState():
     __slots__ = ('cont', 'mate', 'stalemate', 'draw', 'move_timeout',)

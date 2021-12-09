@@ -94,8 +94,8 @@ class Game():
 
             if not piece_candidates:
                 # Add logging here
-                return None
                 raise MoveParseError(f"Not enough information to move to {end}")
+                return None
             elif len(piece_candidates) > 1:
                 # Hacky way to check the same file
                 piece_candidates = [i \
@@ -136,7 +136,7 @@ class Game():
 
     def execute_move_str(self, move_str: str) -> bool:
         move = self.__parse_move(move_str)
-        if not move: return False
+        if not move: print("Failed to parse the move"); return False
         # except MoveParseError as e:
             # Logging here
             # return False
@@ -163,6 +163,7 @@ class Game():
             while not worked:
                 move = input("Please enter a move>> ")
                 worked = self.execute_move_str(move)
+                print(worked)
 
 #    @property
 #     def state(self) -> Board:

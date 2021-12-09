@@ -4,8 +4,16 @@ from Chess.constants import BLACK, WHITE, MoveSignal, WinState
 from Chess.coordinate import Move, Position
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
-from Chess.pieces import King, Pawn, Piece, Rook
+from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook
 from Chess.result import Result, ResultKeys, ResultSet
+
+import sys
+sys.path.append("vendor/pychessbinds/build")
+try:
+    import libpychess
+    USE_CPP = True
+except ImportError:
+    USE_CPP = False
 
 
 def new_pieces():
@@ -21,6 +29,11 @@ class Board():
                  half_moves_since_pawn: int = 0,
                  turn: int = 1,
                  ) -> None:
+        
+        if USE_CPP:
+            self.__psuedolegal_moves = self.__cpp_psuedolegal_moves
+        else:
+            self.__psuedolegal_moves = self.__py_psuedolegal_moves
 
         # Store the fen information gi en and piece representations
         # Construct a map of location: piece
@@ -66,7 +79,82 @@ class Board():
             
         return castling
 
-    def __allowed_move(self, position, piece) -> MoveSignal:
+    def __cpp_convert_pieces(self, pieces):
+        c_pieces = []
+        for piece in pieces:
+            pos = self.piece_map[piece]
+            c_pos = libpychess.Position(pos.i, pos.j)
+            if piece.kind == 'K':
+                c_pieces.append(libpychess.pieces.king(piece.colour, c_pos))
+            elif piece.kind == 'Q':
+                c_pieces.append(libpychess.pieces.queen(piece.colour, c_pos))
+            elif piece.kind == 'R':
+                c_pieces.append(libpychess.pieces.rook(piece.colour, c_pos))
+            elif piece.kind == 'N':
+                c_pieces.append(libpychess.pieces.knight(piece.colour, c_pos))
+            elif piece.kind == 'B':
+                c_pieces.append(libpychess.pieces.bishop(piece.colour, c_pos))
+            elif piece.kind == 'P':
+                c_pieces.append(libpychess.pieces.pawn(piece.colour, c_pos))
+            else:
+                raise ValueError("you done fucked up")
+        return c_pieces
+
+    def __py_convert_result(self, c_result):
+        result = ResultSet({})
+        for key, value in c_result.items():
+            loc = Position((key.position.i, key.position.j))
+            if key.kind == 'k': py_piece = King(key.colour, loc)
+            elif key.kind == 'q': py_piece = Queen(key.colour, loc)
+            elif key.kind == 'r': py_piece = Rook(key.colour, loc)
+            elif key.kind == 'n': py_piece = Knight(key.colour, loc)
+            elif key.kind == 'b': py_piece = Bishop(key.colour, loc)
+            elif key.kind == 'p': py_piece = Pawn(key.colour, loc)
+
+            p_result = Result()
+            p_result[ResultKeys.passive] = [Position((i.i, i.j)) for i in value.passives]
+            p_result[ResultKeys.capture] = [Position((i.i, i.j)) for i in value.captures]
+            p_result[ResultKeys.defend] =  [Position((i.i, i.j)) for i in value.defends]
+            p_result[ResultKeys.attack] = [Position((i.i, i.j)) for i in value.attacks]
+            p_result[ResultKeys.pin] = [Position((i.i, i.j)) for i in value.pins]
+
+            result[py_piece] = p_result
+        return result
+
+    """DEBUGGING MAJOR ISSUE
+    The c++ lib is returning the wrong coloured results i believe - this could be a simple fix or
+    i could be looking for weeks/years
+
+    FIXED
+    There is only now the issue with the pawns not going where they are meant to. Need to
+    check out what is going on with the attacks list vs the passives list i think
+    See test case of 1. c4 d5 2. cxe5 crash.
+    """
+
+
+    def __cpp_psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
+        # Get the pieces into the correct format (might be helpful to just change all my underlying
+        # types lol)
+        c_pieces = self.__cpp_convert_pieces(pieces)
+        analysis = libpychess.MoveAnalyser(c_pieces)
+
+        # This isnt exacltly the same api as the python version
+        # Needs to be updated so we instantiate a new MoveAnalyser on each
+        # self.calculate (and free the previous)
+        # Then we can pass the constructor a list of each piece, and
+        # slightly change the PsuedolegalMoves call to take a pointer 
+        # to a list of pieces to analyse instead of having to go through all the pain
+        # For now it works since we only ever look at one colour at a time.
+        # Need to account for the edge case of when we check for checkmate and have to 
+        # evaluate a position without the king there... That relies on the live update of
+        # the list and so we might need to define a callback from that function
+        # to reinstantiate our analyser object each time - or could try some funkier stuff...
+        col = pieces[0].colour
+        c_result = analysis.PsuedolegalMoves(pieces[0].colour)
+        py_result = self.__py_convert_result(c_result)
+        return py_result
+
+    def __py_allowed_move(self, position, piece) -> MoveSignal:
         """__allowed_move.
         Decides if a move is valid and what type of move it is if so.
 
@@ -112,7 +200,7 @@ class Board():
                 return MoveSignal.capture
         return MoveSignal.disallowed
 
-    def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
+    def __py_psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         # Preallocate the dict to hpoefully speed things up a bit
         results = ResultSet(dict.fromkeys(pieces))
         for piece in pieces:
@@ -131,7 +219,7 @@ class Board():
                     landed_on = Position((ni, nj))
                     # try: landed_on = self.piece_map[piece] + (dir * step)
                     # except InvalidFormat: break
-                    allowed = self.__allowed_move(landed_on, piece)
+                    allowed = self.__py_allowed_move(landed_on, piece)
 
                     # Reordered expressions to make use of short-circuiting
                     if not pinned and allowed == MoveSignal.empty :

@@ -2,7 +2,7 @@ from copy import copy
 from Chess import view
 from Chess.helpers import move_from_str, pieces_from_fen
 from Chess.state import Board
-from Chess.view import view_board_colour  
+from Chess.view import view_board_colour
 from Chess.game import Game
 
 
@@ -27,6 +27,6 @@ def new_game_interactive():
 
 if __name__ == "__main__":
             
-    g = Game()
+    g = Game(view_board_colour)
     g.play()
 

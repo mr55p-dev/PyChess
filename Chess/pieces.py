@@ -46,6 +46,14 @@ class Piece:
     def __str__(self) -> str:
         return f"<{self._kind} colour {self._colour} at {self._position}>"
 
+    def __eq__(self, other: 'Piece') -> bool:
+        return self._kind == other._kind and self._position == other._position and self._is_active == other._is_active and self._colour == other._colour
+
+    def __hash__(self) -> int:
+        # 000(i)000(j)0000000(char)0(active)0(colour)
+        # 000000000000000(15 bits)
+        return 0 | (self._position.i<<13) | (self._position.j<<10) | (ord(self.kind)<<3) | (self._is_active<<2) | (self._colour<<1)
+
     @property
     def colour(self) -> int:
         return self._colour
