@@ -94,10 +94,10 @@ class Board():
             
         return castling
 
-    def __cpp_convert_pieces(self, pieces):
+    def __cpp_get_pieces(self):
         return [
             self._cpp_py_piece_conversion[p.kind](p.colour, Position(p.position.i, p.position.j)) 
-            for p in pieces
+            for p in self.all_pieces
         ]
 
     def __py_convert_result(self, c_result):
@@ -127,7 +127,7 @@ class Board():
     def __cpp_psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         # Get the pieces into the correct format (might be helpful to just change all my underlying
         # types lol)
-        c_pieces = self.__cpp_convert_pieces(pieces)
+        c_pieces = self.__cpp_get_pieces()
         analysis = libpychess.MoveAnalyser(c_pieces)
 
         # This isnt exacltly the same api as the python version
@@ -297,7 +297,8 @@ class Board():
 
             # Finally, if attackers <=1 resolve pins.
             opposing_moves = self.__psuedolegal_moves(self.opposing)
-            pin = opposing_moves.lookup_pin(self.piece_map[piece])
+            piece_loc = self.piece_map[piece]
+            pin = opposing_moves.lookup_pin(piece_loc)
             if pin:
                 # Only valid moves for a pinned piece will be on the axis of the opposing piece
                 # and king.
@@ -375,8 +376,8 @@ class Board():
         return results
 
     def calculate(self) -> None:
-        self.__loc_map = { piece.position: piece for piece in self.moving + self.opposing }
-        self.__piece_map = { piece: piece.position for piece in self.moving + self.opposing }
+        self.__loc_map = { piece.position: piece for piece in self.moving + self.opposing if piece.is_active}
+        self.__piece_map = { piece: piece.position for piece in self.moving + self.opposing if piece.is_active}
 
         self.__is_check = self.__evaluate_check()
 
@@ -601,6 +602,11 @@ class Board():
             return [i for i in self._black if i.is_active]
         else:
             return [i for i in self._white if i.is_active]
+
+    @property
+    def all_pieces(self) -> List[Piece]:
+        return [i for i in self._white + self._black if i.is_active]
+
     @property
     def loc_map(self) -> Dict[Position, Piece]:
         return self.__loc_map

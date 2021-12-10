@@ -95,14 +95,14 @@ class Game():
             piece = move_repr[0]
             if not piece: piece = "P"
             moves = self.peek.allied_moves
-            moves = moves.filter_all_by_value(lambda x: x == end)
-            piece_candidates = [k for k in moves if moves[k].has_passive_or_capture]
-            piece_candidates = [p for p in piece_candidates if p.kind == piece]
+            moves_filt = moves.filter_all_by_value(lambda x: x == end)
+            init_piece_candidates = [k for k in moves_filt if moves_filt[k].has_passive_or_capture]
+            piece_candidates = [p for p in init_piece_candidates if p.kind == piece]
 
             if not piece_candidates:
                 # Add logging here
-                return None
-                # raise MoveParseError(f"Not enough information to move to {end}")
+                # return None
+                raise MoveParseError(f"Not enough information to move to {end}")
             elif len(piece_candidates) > 1:
                 # Hacky way to check the same file
                 piece_candidates = [i \
@@ -111,7 +111,7 @@ class Game():
                             ]
                 if not len(piece_candidates) == 1:
                     # Add logging
-                    return None
+                    # return None
                     raise MoveParseError(f"Multiple pieces may move to {end}")
             start = self.peek.piece_map[piece_candidates.pop()]
 
