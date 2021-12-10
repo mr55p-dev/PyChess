@@ -296,6 +296,7 @@ class Board():
                 results[piece] = results[piece].filter_valid(lambda x: x in path)
 
             # Finally, if attackers <=1 resolve pins.
+            # FIX THIS
             opposing_moves = self.__psuedolegal_moves(self.opposing)
             piece_loc = self.piece_map[piece]
             pin = opposing_moves.lookup_pin(piece_loc)

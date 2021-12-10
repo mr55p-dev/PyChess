@@ -22,16 +22,12 @@ problematic_queen_fen = "r2kQb1r/pbpp3p/1pn1p3/7B/3PP2q/P1N5/1PP2PPP/R3K2R b KQ 
 
 no_dxe4_fen = "rnbqkbnr/pp2pppp/2p5/3p4/4P3/2N2Q2/PPPP1PPP/R1B1KBNR b KQkq - 0 3"
 c3_issue_fen = "r3k2r/pp2b1pp/2p1N1b1/q7/8/3P1Q2/PPP2PPP/R3K2R w KQkq - 0 15"
+qg2_fen = "r4r1k/1p2Np2/p2p1np1/2p5/Q1P1P2p/3B1P1q/PP2K3/R6R b - - 0 23"
 
 def construct_board(fen):
     params = pieces_from_fen(fen)
     board = Board(*params)
     return board
 
-start = construct_board(c3_issue_fen)
+start = construct_board(qg2_fen)
 game = Game(view_board_mono, start_state=start)
-game.show_board()
-game.execute_move_str("c3")
-game.execute_move_str("e5")
-game.execute_move_str("de5")
-game.show_board()

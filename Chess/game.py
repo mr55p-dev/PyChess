@@ -22,6 +22,7 @@ class Game():
         else: board = Board()
 
         self.__state = board
+        self.move_hist = [];
 
     def __check_termination(self) -> int:
         if self.peek.is_check:
@@ -101,7 +102,8 @@ class Game():
 
             if not piece_candidates:
                 # Add logging here
-                # return None
+                print("poo")
+                return False 
                 raise MoveParseError(f"Not enough information to move to {end}")
             elif len(piece_candidates) > 1:
                 # Hacky way to check the same file
@@ -131,6 +133,7 @@ class Game():
         return self.__move(move)
 
     def execute_move_str(self, move_str: str) -> bool:
+        self.move_hist.append(move_str)
         move = self.__parse_move(move_str)
         if not move: 
             print(f"Failed to parse move {move_str}")
