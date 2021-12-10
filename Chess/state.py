@@ -285,6 +285,7 @@ class Board():
             attacker = attackers.pop()
             assert attacker
 
+        opposing_moves = self.__psuedolegal_moves(self.opposing)
         for piece in results.keys():
             # If there is only one attacker, non-king pieces can only move on the path attacker - king
             # If the piece is a king then fetch the king_moves from __filter_king_moves algorithm
@@ -296,8 +297,6 @@ class Board():
                 results[piece] = results[piece].filter_valid(lambda x: x in path)
 
             # Finally, if attackers <=1 resolve pins.
-            # FIX THIS
-            opposing_moves = self.__psuedolegal_moves(self.opposing)
             piece_loc = self.piece_map[piece]
             pin = opposing_moves.lookup_pin(piece_loc)
             if pin:
