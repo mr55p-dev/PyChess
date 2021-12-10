@@ -1,7 +1,12 @@
 from typing import List
-from Chess.constants import PIECE_TYPES, WHITE, BLACK
-from Chess.coordinate import Position, Vec
+from Chess.constants import PIECE_TYPES, WHITE, BLACK, USE_CPP
+from Chess.coordinate import Vec
 from Chess.exceptions import InvalidPiece
+
+try:
+    from libpychess import Position
+except ImportError:
+    from Chess.coordinate import Position
 
 class Piece:
     """
@@ -47,7 +52,7 @@ class Piece:
         return f"<{self._kind} colour {self._colour} at {self._position}>"
 
     def __eq__(self, other: 'Piece') -> bool:
-        return self._kind == other._kind and self._position == other._position and self._is_active == other._is_active and self._colour == other._colour
+        return self.__hash__() == hash(other)
 
     def __hash__(self) -> int:
         # 000(i)000(j)0000000(char)0(active)0(colour)
@@ -206,24 +211,3 @@ class Pawn(Piece):
                 Vec(-1, -1),
                 Vec(-1, 1),
             ]
-# class Pawn(Piece):
-#     def __init__(self, colour: int, position: Position) -> None:
-#         super().__init__(colour, position, kind="P", max_distance=1)
-# 
-#     @property
-#     def projections(self):
-#         """The directions this piece can move in"""
-#         if self._colour == WHITE:
-#             return [
-#                 Vec(1, 0),
-#                 Vec(2, 0),
-#                 Vec(1, -1),
-#                 Vec(1, 1),
-#             ]
-#         else:
-#             return [
-#                 Vec(-1, 0),
-#                 Vec(-2, 0),
-#                 Vec(-1, -1),
-#                 Vec(-1, 1),
-#             ]

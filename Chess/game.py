@@ -1,8 +1,14 @@
 import re
 from typing import Callable, Optional
-from Chess import Board
-from Chess.coordinate import Move, Position
+from Chess.state import Board
+from Chess.coordinate import Move
 from Chess.exceptions import MoveParseError
+from Chess.constants import USE_CPP
+
+try: 
+    from libpychess import Position
+except ImportError: 
+    from Chess.coordinate import Position
 
 class Game():
     def __init__(self,
@@ -15,7 +21,7 @@ class Game():
         if start_state: board = start_state
         else: board = Board()
 
-        self.push(board)
+        self.__state = board
 
     def __check_termination(self) -> int:
         if self.peek.is_check:
@@ -83,6 +89,7 @@ class Game():
 
         start = move_repr[1]
         if len(start) == 2:
+            ## ALG_POS
             start = Position(start.upper())
         else:
             piece = move_repr[0]
@@ -94,8 +101,8 @@ class Game():
 
             if not piece_candidates:
                 # Add logging here
-                raise MoveParseError(f"Not enough information to move to {end}")
                 return None
+                # raise MoveParseError(f"Not enough information to move to {end}")
             elif len(piece_candidates) > 1:
                 # Hacky way to check the same file
                 piece_candidates = [i \
@@ -105,7 +112,7 @@ class Game():
                 if not len(piece_candidates) == 1:
                     # Add logging
                     return None
-                    # raise MoveParseError(f"Multiple pieces may move to {end}")
+                    raise MoveParseError(f"Multiple pieces may move to {end}")
             start = self.peek.piece_map[piece_candidates.pop()]
 
         return Move(start, end, takes)
@@ -113,48 +120,27 @@ class Game():
     def __move(self, move) -> bool:
         return self.peek.move(move)
 
-    # def __parse_pgn(self, move) -> List[Move]:
-    #     pass
-
     @property
     def peek(self) -> Board:
-        if self.__state: return self.__state
-        else: raise ValueError("No state to show")
-
-    def push(self, state: Board) -> None:
-        self.__state = state
-
-    # def pop(self) -> Board:
-    #     if self.__state: return self.__state.pop()
-    #     else: raise ValueError("No history to pop")
-
-    # def execute_pgn(self, pgn) -> bool:
-    #     pass
+        if self.__state: 
+            return self.__state
+        else: 
+            raise ValueError("No state to show")
 
     def execute_move(self, move: Move) -> bool:
         return self.__move(move)
 
     def execute_move_str(self, move_str: str) -> bool:
         move = self.__parse_move(move_str)
-        if not move: print("Failed to parse the move"); return False
-        # except MoveParseError as e:
-            # Logging here
-            # return False
+        if not move: 
+            print(f"Failed to parse move {move_str}")
+            return False
         return self.__move(move)
 
     def show_board(self):
         if not isinstance(self.__view_callback, Callable):
             raise TypeError("view_callback must implement __call__")
         self.__view_callback(self.peek)
-
-    # def fetch_moves(self, piece):
-    #     pass
-
-    def next(self) -> None:
-        pass
-
-    def prev(self) -> None:
-        pass
 
     def play(self):
         while self.__check_termination():
@@ -165,14 +151,3 @@ class Game():
                 worked = self.execute_move_str(move)
                 print(worked)
 
-#    @property
-#     def state(self) -> Board:
-#         pass
-# 
-#     @property
-#     def turn(self) -> int:
-#         pass
-# 
-#     @property
-#     def to_move(self) -> int:
-#         pass

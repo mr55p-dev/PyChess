@@ -1,8 +1,12 @@
 import pytest
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
-from Chess.coordinate import Position
 from Chess.pieces import Piece, King, Queen, Knight, Rook, Bishop, Pawn
 from itertools import product
+
+try:
+    from libpychess import Position
+except ImportError:
+    from Chess.coordinate import Position
 
 colours = [WHITE, BLACK]
 

@@ -1,8 +1,14 @@
-from Chess.coordinate import Position, Vec
+from Chess.coordinate import Vec
 from Chess.exceptions import InvalidFormat, InvalidVector
 from Chess.constants import CART_COORD
 import pytest
 from itertools import product
+
+try:
+    from libpychess import Position
+except ImportError:
+    from Chess.coordinate import Position
+
 
 ALL_CART_COORD = list(product(CART_COORD, CART_COORD))
 

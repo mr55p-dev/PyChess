@@ -1,9 +1,12 @@
 from collections.abc import MutableMapping
 from typing import Any, Callable, Dict, Iterator, List, Optional
-
-from Chess.coordinate import Position
 from Chess.pieces import King, Piece
-from Chess.constants import ResultKeys
+from Chess.constants import ResultKeys, USE_CPP
+
+try:
+    from libpychess import Position
+except ImportError:
+    from Chess.coordinate import Position
 
 
 class BaseResult(MutableMapping):

@@ -1,5 +1,4 @@
 from Chess.game import Game
-from Chess.state import Board
 
 import cProfile, pstats
 from functools import wraps
@@ -44,10 +43,11 @@ def make_board(games):
     for game in games:
         g = Game()
         for move in game:
-            g.execute_move_str(move)
+            x = g.execute_move_str(move)
+            print(move)
 
 with open("./generated_data/games.pickle", "rb") as f:
     li = pickle.load(f)
 
-games= li[:50]
-make_board(games)
+games = li.pop()
+make_board([games])

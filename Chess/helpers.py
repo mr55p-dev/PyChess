@@ -1,8 +1,13 @@
 import re
 from typing import List
-from Chess.coordinate import Move, Position
+from Chess.coordinate import Move
 from Chess.pieces import King, Queen, Rook, Knight, Bishop, Pawn
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
+
+try:
+    from libpychess import Position
+except ImportError:
+    from Chess.coordinate import Position
 
 def new_game():
     # Change to FEN strings at some point
@@ -119,7 +124,6 @@ def pieces_from_fen(fen_string: str):
 
     return [(white_pieces, black_pieces), next_turn, castle, en_passant, half_moves, n_moves]
 
-
 def parse_match(move_repr: List[str]):
     if move_repr[0] == '':
         piece = 'P'
@@ -128,6 +132,7 @@ def parse_match(move_repr: List[str]):
 
     start = move_repr[1]
     if len(start) == 2:
+        ## ALG_POS
         start = Position(start.upper())
 
     if move_repr[2] == '':
@@ -136,6 +141,7 @@ def parse_match(move_repr: List[str]):
         takes = True
 
     if move_repr[3] == '': raise ValueError("No destination supplied")
+    ## ALG_POS
     end = Position(move_repr[3].upper())
 
     return (start, end, piece, takes)

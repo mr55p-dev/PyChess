@@ -3,12 +3,9 @@ import pickle
 from itertools import repeat
 from re import Pattern
 from typing import List
-from random import randint
-from Chess.__main__ import construct_board
 from Chess.state import Board
 from Chess.game import Game
 from Chess.helpers import pieces_from_fen
-from Chess.view import view_board_colour, view_board_mono
 from tqdm import tqdm
 
 def read_pgn_file(filename: str) -> List[str]:
@@ -43,7 +40,7 @@ def make_board(fen: str) -> Board:
 # with open("./generated_data/games", 'wb') as f:
 #     pickle.dump(list(games), f)
  
-with open("./generated_data/games", 'rb') as f:
+with open("./generated_data/games.pickle", 'rb') as f:
     games: List = pickle.load(f)
 
 with open("./generated_data/all_boards.txt", 'w', newline='') as f:

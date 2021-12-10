@@ -1,10 +1,7 @@
 from itertools import repeat
-from pickle import HIGHEST_PROTOCOL
 from typing import List, Tuple, Union
 import math
 import Chess.constants as cons
-from Chess.exceptions import InvalidFormat, InvalidVector
-
 
 class Vec:
     __slots__ = ('i', 'j')
@@ -30,15 +27,6 @@ class Vec:
 
     def __mul__(self, scalar) -> 'Vec':
         return Vec(self.i * scalar, self.j * scalar)
-
-#     @property
-#     def i(self) -> int:
-#         return self.i
-# 
-#     @property
-#     def j(self) -> int:
-#         return self.j
-
 
 class Position:
     """
@@ -154,7 +142,7 @@ class Position:
         """Generate a hash of the position
         allows positions to be the key of the _loc_map dict in 
         `Game`"""
-        return 10*self.i + self.j
+        return 0 | (self.i<<3) | self.j 
 
     @property
     def algebraic(self) -> str:
@@ -163,18 +151,6 @@ class Position:
         :rtype: str
         """
         return cons.FILES[self.j] + str(self.i + 1)
-
-    @property
-    def grid(self) -> Tuple[int, int]:  
-        return self.i, self.j 
-
-#     @property
-#     def i(self) -> int:
-#         return self.i
-# 
-#     @property
-#     def j(self) -> int:
-#         return self.j
 
 
 class Move():

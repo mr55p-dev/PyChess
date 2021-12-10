@@ -1,23 +1,17 @@
 from typing import Dict, List, Tuple
 
-from Chess.constants import BLACK, WHITE, MoveSignal, WinState
-from Chess.coordinate import Move, Position
+from Chess.constants import BLACK, WHITE, MoveSignal, WinState, USE_CPP
+from Chess.coordinate import Move
 from Chess.exceptions import InvalidFormat
 from Chess.helpers import new_game
 from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook
 from Chess.result import Result, ResultKeys, ResultSet
 
-import sys
-sys.path.append("vendor/pychessbinds/build")
 try:
     import libpychess
-    USE_CPP = True
+    from libpychess import Position
 except ImportError:
-    USE_CPP = False
-
-
-def new_pieces():
-    yield new_game()
+    from Chess.coordinate import Position 
 
 
 class Board():
@@ -53,6 +47,27 @@ class Board():
         # This is just while castling and en-passant is not implemented
         self._castle = self.__parse_castle(can_castle) # castle[4] : white kingside, queenside, black kingside, queenside
 
+        
+        if USE_CPP:
+            # Define some conversion tables
+            self._cpp_py_piece_conversion = {
+                "K" : libpychess.pieces.king,
+                "Q" : libpychess.pieces.queen,
+                "R" : libpychess.pieces.rook,
+                "N" : libpychess.pieces.knight,
+                "B" : libpychess.pieces.bishop,
+                "P" : libpychess.pieces.pawn,
+            }
+
+            self._py_cpp_conv = {
+                "k" : King,
+                "q" : Queen,
+                "r" : Rook,
+                "n" : Knight,
+                "b" : Bishop,
+                "p" : Pawn
+            }
+
         self.calculate()
 
     def __repr__(self) -> str:
@@ -80,45 +95,22 @@ class Board():
         return castling
 
     def __cpp_convert_pieces(self, pieces):
-        c_pieces = []
-        for piece in pieces:
-            pos = self.piece_map[piece]
-            c_pos = libpychess.Position(pos.i, pos.j)
-            if piece.kind == 'K':
-                c_pieces.append(libpychess.pieces.king(piece.colour, c_pos))
-            elif piece.kind == 'Q':
-                c_pieces.append(libpychess.pieces.queen(piece.colour, c_pos))
-            elif piece.kind == 'R':
-                c_pieces.append(libpychess.pieces.rook(piece.colour, c_pos))
-            elif piece.kind == 'N':
-                c_pieces.append(libpychess.pieces.knight(piece.colour, c_pos))
-            elif piece.kind == 'B':
-                c_pieces.append(libpychess.pieces.bishop(piece.colour, c_pos))
-            elif piece.kind == 'P':
-                c_pieces.append(libpychess.pieces.pawn(piece.colour, c_pos))
-            else:
-                raise ValueError("you done fucked up")
-        return c_pieces
+        return [
+            self._cpp_py_piece_conversion[p.kind](p.colour, Position(p.position.i, p.position.j)) 
+            for p in pieces
+        ]
 
     def __py_convert_result(self, c_result):
-        result = ResultSet({})
-        for key, value in c_result.items():
-            loc = Position((key.position.i, key.position.j))
-            if key.kind == 'k': py_piece = King(key.colour, loc)
-            elif key.kind == 'q': py_piece = Queen(key.colour, loc)
-            elif key.kind == 'r': py_piece = Rook(key.colour, loc)
-            elif key.kind == 'n': py_piece = Knight(key.colour, loc)
-            elif key.kind == 'b': py_piece = Bishop(key.colour, loc)
-            elif key.kind == 'p': py_piece = Pawn(key.colour, loc)
-
-            p_result = Result()
-            p_result[ResultKeys.passive] = [Position((i.i, i.j)) for i in value.passives]
-            p_result[ResultKeys.capture] = [Position((i.i, i.j)) for i in value.captures]
-            p_result[ResultKeys.defend] =  [Position((i.i, i.j)) for i in value.defends]
-            p_result[ResultKeys.attack] = [Position((i.i, i.j)) for i in value.attacks]
-            p_result[ResultKeys.pin] = [Position((i.i, i.j)) for i in value.pins]
-
-            result[py_piece] = p_result
+        result = ResultSet(
+            {self._py_cpp_conv[k.kind](k.colour, Position(k.position.i, k.position.j)) : Result(v) 
+             for k, v in c_result.items()}
+        )
+#         for key, value in c_result.items():
+#             loc = 
+#             py_piece = self._py_cpp_piece_conversion[key.kind](key.colour, loc)
+#             p_result = Result(result)
+# 
+#             result[py_piece] = p_result
         return result
 
     """DEBUGGING MAJOR ISSUE
@@ -149,7 +141,6 @@ class Board():
         # evaluate a position without the king there... That relies on the live update of
         # the list and so we might need to define a callback from that function
         # to reinstantiate our analyser object each time - or could try some funkier stuff...
-        col = pieces[0].colour
         c_result = analysis.PsuedolegalMoves(pieces[0].colour)
         py_result = self.__py_convert_result(c_result)
         return py_result
