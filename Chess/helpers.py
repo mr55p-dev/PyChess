@@ -10,8 +10,9 @@ except ImportError:
     from Chess.coordinate import Position
 
 def new_game():
-    # Change to FEN strings at some point
-    # construct white:
+    """new_game.
+    Returns the pieces of a starting position. Probably not required since the implementation of
+    construct_board."""
     white_pieces = [
         Rook(colour=WHITE, position=Position((0,0))),
         Knight(colour=WHITE, position=Position((0,1))),
@@ -53,6 +54,15 @@ def new_game():
     return (white_pieces, black_pieces)
 
 def create_piece(kind, colour, index):
+    """create_piece.
+    Just wraps the piece creation. Could be done more efficiently using
+    a dictionary of functions (such as in Board)
+
+    :param kind: Piece kind
+    :param colour: Piece colour
+    :param index: Position of the piece 
+    :type index: (int, int) | str
+    """
     position = Position(index)
     if kind == "K":
         return King(colour=colour, position=position)
@@ -109,22 +119,25 @@ def pieces_from_fen(fen_string: str):
 
     # Decode the next turn
     next_turn = WHITE if fields[1] == 'w' else BLACK
-
     # Castling information
     castle = fields[2]
-
     # Valid enpassant moves
     en_passant = fields[3]
-
     # Halfmove clock 2 x moves since last pawn move or capture
     half_moves = int(fields[4])
-
     # Number of moves
     n_moves = int(fields[5])
 
     return [(white_pieces, black_pieces), next_turn, castle, en_passant, half_moves, n_moves]
 
 def parse_match(move_repr: List[str]):
+    """parse_match.
+    Parses the matched move string into a Move
+    Depreciated since it was migrated into Game
+
+    :param move_repr:
+    :type move_repr: List[str]
+    """
     if move_repr[0] == '':
         piece = 'P'
     else:
@@ -147,6 +160,15 @@ def parse_match(move_repr: List[str]):
     return (start, end, piece, takes)
 
 def lookup_move(board, start, end, piece, takes):
+    """lookup_move.
+    Finds the piece to move on the board
+
+    :param board:
+    :param start:
+    :param end:
+    :param piece:
+    :param takes:
+    """
     moves = board.allied_moves
 
     # Rewrite with result set.
@@ -169,6 +191,14 @@ def lookup_move(board, start, end, piece, takes):
     return board.piece_map[candidates[0]]
 
 def move_from_str(move_str: str, board):
+    """move_from_str.
+    Takes a standard chess notation move (PGN move) and wraps it in a `Move` object.
+    Depreciated since moving into `Game`.
+
+    :param move_str:
+    :type move_str: str
+    :param board:
+    """
     pattern = r'([KQRNB])?([a-h]\d?)?(x)?([a-z]\d)$'
     matches = re.findall(pattern, move_str)
     print(matches)

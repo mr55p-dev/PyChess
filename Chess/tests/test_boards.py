@@ -1,68 +1,42 @@
-from itertools import product
 import pytest
-from Chess.__main__ import construct_board
-from Chess.coordinate import Move, Position
-from Chess.result import ResultKeys
-from Chess.state import Board
-from Chess.helpers import pieces_from_fen
+from Chess.state import Board, construct_board
 
-def test_initalise():
+fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+c5 = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
+Nf3 = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+
+def test_init():
     board = Board()
-    board.calculate()
+    assert board.to_fen() == fen
+    
+fen_seq = [
+    fen,
+    e4,
+    c5,
+    Nf3
+]
+
+# These tests still fail as half move clock and en-passant not working
+@pytest.mark.parametrize('fen', fen_seq)
+def test_construct(fen):
+    board = construct_board(fen)
+    assert board.to_fen() == fen
+
+def test_calculate():
+    ...
+
+def test_check():
+    ...
+
+def test_mate():
+    ...
+
+def test_stalemate():
+    ...
+
+def test_legal_moves():
+    ...
 
 def test_move():
-    board = Board()
-    move = Move(Position("A2"), Position("A4"), False)
-    board.move(move)
-    assert board.to_fen() == "rnbqkbnr/pppppppp/8/8/P7/8/1PPPPPPP/RNBQKBNR b KQkq - 0 1"
-
-fen_tests = [
-    "r3kbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq - 0 1",
-    "r3kbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQk - 0 1",
-    "r3k2r/pppppppp/8/3n4/2P5/5b2/PP1PPPPP/RNBQKBNR b KQ - 0 1",
-    "r3k2r/pppppppp/8/3n4/2P5/5b2/PP1PPPPP/RNBQKBNR b KQk - 0 1",
-    "r3k2r/ppppp1pp/8/3n1Q2/2P5/5b2/PP1PPPPP/RNB1KBNR b KQkq - 0 1",
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3KBNR w KQkq - 0 1",
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQ - 0 1",
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w - - 0 1",
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w K - 0 1",
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/4K3 w kq - 0 1",
-]
-correct_outcome = [
-    [Position("C8")],
-    [],
-    [],
-    [Position("G8")],
-    [Position("C8")],
-    [Position("C1")],
-    [Position("G1"), Position("C1")],
-    [],
-    [Position("G1")],
-    []
-]
-
-@pytest.mark.parametrize('fen,outcome', zip(fen_tests, correct_outcome))
-def test_castling(fen, outcome):
-    board = construct_board(fen)
-    castle = board.valid_castle()
-    assert castle == outcome
-
-@pytest.mark.parametrize('fen,outcome', zip(fen_tests, correct_outcome))
-def test_king_passive(fen, outcome):
-    board = construct_board(fen)
-    valid_moves = board.allied_moves
-    king_moves = valid_moves.king[ResultKeys.passive]
-    for i in outcome:
-        assert i in king_moves
-
-@pytest.mark.parametrize('fen,outcome', zip(fen_tests, correct_outcome))
-def test_king_passive_not(fen, outcome):
-    board = construct_board(fen)
-    valid_moves = board.allied_moves
-    king_moves = valid_moves.king[ResultKeys.passive]
-    possible = [Position("C1"), Position("G1"), Position("C8"), Position("G8")]
-    for j in possible:
-        if j not in outcome:
-            assert j not in king_moves
-
-
+    ...

@@ -3,7 +3,6 @@ from typing import Callable, Optional
 from Chess.state import Board
 from Chess.coordinate import Move
 from Chess.exceptions import MoveParseError
-from Chess.constants import USE_CPP
 
 try: 
     from libpychess import Position
@@ -11,6 +10,10 @@ except ImportError:
     from Chess.coordinate import Position
 
 class Game():
+    """Game
+    Wrapper for Board which tracks the changes applied to state over time and implements a very
+    basic game loop."""
+
     def __init__(self,
                  view_callback: Optional[Callable] = None,
                  start_state: Board = None
@@ -25,6 +28,12 @@ class Game():
         self.move_hist = [];
 
     def __check_termination(self) -> int:
+        """__check_termination.
+        Check if the game has ended
+
+        :param self:
+        :rtype: int
+        """
         if self.peek.is_check:
             return 1
         elif self.peek.is_mate:
@@ -35,6 +44,14 @@ class Game():
             return 1
     
     def __parse_castle(self, castle_type: str) -> Move:
+        """__parse_castle.
+        Parse a move string which reffers to castling long or short
+
+        :param self:
+        :param castle_type:
+        :type castle_type: str
+        :rtype: Move
+        """
         if castle_type == "long":
             long = True
         elif castle_type == "short":
@@ -65,6 +82,15 @@ class Game():
         return Move(start, end, takes, castles)
 
     def __parse_move(self, move_str: str) -> Move:
+        """__parse_move.
+        Parse a standard chess move (notation such as Qd4, a5, Bxc1... supported).
+        Used to parse PGN notation and to allow basic interactivity.
+
+        :param self:
+        :param move_str:
+        :type move_str: str
+        :rtype: Move
+        """
         pattern = r'([KQRNB])?([a-h]\d?)?(x)?([a-z]\d)|(O-O)(-O)?'
         matches = re.findall(pattern, move_str)
 
@@ -95,9 +121,9 @@ class Game():
         else:
             piece = move_repr[0]
             if not piece: piece = "P"
-            moves = self.peek.allied_moves
+            moves = self.peek.moves
             moves_filt = moves.filter_all_by_value(lambda x: x == end)
-            init_piece_candidates = [k for k in moves_filt if moves_filt[k].has_passive_or_capture]
+            init_piece_candidates = [k for k in moves_filt if moves_filt[k].has_valid]
             piece_candidates = [p for p in init_piece_candidates if p.kind == piece]
 
             if not piece_candidates:
@@ -119,33 +145,62 @@ class Game():
 
         return Move(start, end, takes)
 
-    def __move(self, move) -> bool:
-        return self.peek.move(move)
-
     @property
     def peek(self) -> Board:
+        """peek.
+        Legacy from when the game implemeted a stack history and Board did not manipulate its own state.
+
+        :param self:
+        :rtype: Board
+        """
         if self.__state: 
             return self.__state
         else: 
             raise ValueError("No state to show")
 
     def execute_move(self, move: Move) -> bool:
-        return self.__move(move)
+        """execute_move.
+        Execute a Move object on the board
+
+        :param self:
+        :param move:
+        :type move: Move
+        :rtype: bool
+        """
+        return self.peek.move(move)
 
     def execute_move_str(self, move_str: str) -> bool:
+        """execute_move_str.
+        Execute a move given in standard chess notation on the board
+
+        :param self:
+        :param move_str:
+        :type move_str: str
+        :rtype: bool
+        """
         self.move_hist.append(move_str)
         move = self.__parse_move(move_str)
         if not move: 
             print(f"Failed to parse move {move_str}")
             return False
-        return self.__move(move)
+        return self.peek.move(move)
 
     def show_board(self):
+        """show_board.
+        Callback to the view function requesting a redraw.
+
+        :param self:
+        """
         if not isinstance(self.__view_callback, Callable):
             raise TypeError("view_callback must implement __call__")
         self.__view_callback(self.peek)
 
     def play(self):
+        """play.
+        Game loop for interactive play.
+
+        :param self:
+        """
         while self.__check_termination():
             self.show_board()
             worked = False

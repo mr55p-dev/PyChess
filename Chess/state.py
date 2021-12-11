@@ -2,8 +2,7 @@ from typing import Dict, List, Tuple
 
 from Chess.constants import BLACK, WHITE, MoveSignal, WinState, USE_CPP
 from Chess.coordinate import Move
-from Chess.exceptions import InvalidFormat
-from Chess.helpers import new_game
+from Chess.helpers import new_game, pieces_from_fen
 from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook
 from Chess.result import Result, ResultKeys, ResultSet
 
@@ -15,6 +14,15 @@ except ImportError:
 
 
 class Board():
+    """Board.
+    This wraps a games state and provides utilities for interacting with it and calculating
+    the moves which are available in the position. It can also execute moves on the current
+    state which performs internal mainpulation rather than copying, since instantiating
+    this object is kind of slow...
+
+    USE_CPP controls if the function to evaluate the "psuedolegal" moves in a position should
+    be defined in libpychess or Chess.coordinate. The former is a C++ implementation of the latter"""
+
     def __init__(self,
                  starting_position: Tuple[List[Piece], List[Piece]] = None,
                  to_move: int = WHITE,
@@ -29,7 +37,7 @@ class Board():
         else:
             self.__psuedolegal_moves = self.__py_psuedolegal_moves
 
-        # Store the fen information gi en and piece representations
+        # Store the fen information given and piece representations
         # Construct a map of location: piece
         if starting_position: self._white, self._black = starting_position
         else: self._white, self._black = new_game()
@@ -83,6 +91,14 @@ class Board():
         return "\n".join([" ".join([cell for cell in row]) for row in board])
 
     def __parse_castle(self, castle_str) -> List[bool]:
+        """__parse_castle.
+        Turn the castling move notation from FEN strings into
+        the representation used by Board.
+
+        :param self:
+        :param castle_str:
+        :rtype: List[bool]
+        """
         castling = [False, False, False, False]
         if castle_str == "-": return castling
 
@@ -95,36 +111,39 @@ class Board():
         return castling
 
     def __cpp_get_pieces(self):
+        """__cpp_get_pieces.
+        Converts all the active pieces in the state into the version defined by libpychess
+
+        :param self:
+        """
         return [
             self._cpp_py_piece_conversion[p.kind](p.colour, Position(p.position.i, p.position.j)) 
             for p in self.all_pieces
         ]
 
     def __py_convert_result(self, c_result):
+        """__py_convert_result.
+        Converts the output of libpychess MoveAnalyser into the same type returned by
+        __py_psuedolegal_moves
+
+        :param self:
+        :param c_result: Value returned by libpychess::MoveAnalyser.PsuedolegalMoves
+        """
         result = ResultSet(
             {self._py_cpp_conv[k.kind](k.colour, Position(k.position.i, k.position.j)) : Result(v) 
              for k, v in c_result.items()}
         )
-#         for key, value in c_result.items():
-#             loc = 
-#             py_piece = self._py_cpp_piece_conversion[key.kind](key.colour, loc)
-#             p_result = Result(result)
-# 
-#             result[py_piece] = p_result
         return result
 
-    """DEBUGGING MAJOR ISSUE
-    The c++ lib is returning the wrong coloured results i believe - this could be a simple fix or
-    i could be looking for weeks/years
-
-    FIXED
-    There is only now the issue with the pawns not going where they are meant to. Need to
-    check out what is going on with the attacks list vs the passives list i think
-    See test case of 1. c4 d5 2. cxe5 crash.
-    """
-
-
     def __cpp_psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
+        """__cpp_psuedolegal_moves.
+        Wraps function calls to convert and retrieve data from the libpychess module.
+
+        :param self:
+        :param pieces:
+        :type pieces: List[Piece]
+        :rtype: ResultSet
+        """
         # Get the pieces into the correct format (might be helpful to just change all my underlying
         # types lol)
         c_pieces = self.__cpp_get_pieces()
@@ -146,23 +165,26 @@ class Board():
         return py_result
 
     def __py_allowed_move(self, position, piece) -> MoveSignal:
-        """__allowed_move.
-        Decides if a move is valid and what type of move it is if so.
+        """__py_allowed_move.
 
-        Returns self.EMPTY if a move is allowed
-        Returns self.BLOCKED if a move is blocked by an allied piece
-        Returns self.CHECKING_ATTACK if a move is a check
-        Returns self.CAPTURE if a move is a capture
-        Returns self.DISALLOWED if a move is not allowed (such as pawn push)
+        Calculates what the "type" of move which has been sent is.
 
-        :param position:
-        :param piece:
+        Returns MoveSignal.empty if a move is allowed
+        Returns MoveSignal.blocked if a move is blocked by an allied piece
+        Returns MoveSignal.checking_attack if a move is a check
+        Returns MoveSignal.capture if a move is a capture
+        Returns MoveSignal.disallowed if a move is not allowed (such as pawn push)
+
+
+        :param self:
+        :param position: The position being evaluated (laneded on)
+        :param piece: The piece being evaluated
+        :rtype: MoveSignal
         """
         capture_allowed = True
         passive_allowed = True
         # Faster than using isinstance calls
         if piece.kind == 'P':
-
             start_position = self.piece_map[piece]
             # The pieces start at either i=1 or i=6
             start = 1 if piece.colour == WHITE else 6
@@ -174,7 +196,7 @@ class Board():
             if has_moved and start_position.i - position.i in [2, -2]:
                 return MoveSignal.disallowed
 
-
+        # Check if the destination square is occupied and act accordingly
         occupier = None
         if position in self.loc_map:
             occupier = self.loc_map[position]
@@ -192,6 +214,19 @@ class Board():
         return MoveSignal.disallowed
 
     def __py_psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
+        """__py_psuedolegal_moves.
+        Calculates the moves each piece could make if not constrained by checks, etc.
+        This is designed to separate move calculation out into a two step process, to
+        avoid having to create and analyse future states to evaluate check or checkmate.
+
+        This abstraction allows the board to very quickly mock the moves that the enemy could make
+        and this approach relies on the rule that only one side may be in check at any one time.
+
+        :param self:
+        :param pieces: Pieces to find moves for
+        :type pieces: List[Piece]
+        :rtype: ResultSet
+        """
         # Preallocate the dict to hpoefully speed things up a bit
         results = ResultSet(dict.fromkeys(pieces))
         for piece in pieces:
@@ -257,6 +292,18 @@ class Board():
         return results
      
     def __filter_moves(self, results: ResultSet) -> ResultSet:
+        """__filter_moves.
+        Applies the constraints of checks and pins to the given "psuedolegal" results.
+        This only needs to be done once each turn to get all the fully legal moves of the
+        allied pieces. ALthough this does not account for castling moves - that is handled
+        by the parser and state variables instead since it applies to the whole lifetime
+        of the state.
+
+        :param self:
+        :param results:
+        :type results: ResultSet
+        :rtype: ResultSet
+        """
         # Fetches enemy psuedolegal moves and returns attacking pieces
         attackers = self.__is_check[:]
         king = self.__get_king()
@@ -312,6 +359,16 @@ class Board():
                        new_position = None,
                        is_active = None
                        ) -> None:
+        """__update_piece.
+        Convenience method for safely updating the properties of a piece.
+
+        :param self:
+        :param piece:
+        :type piece: Piece
+        :param new_position:
+        :param is_active:
+        :rtype: None
+        """
 
         if isinstance(new_position, Position):
             # Change this to just update the map in the future.
@@ -320,9 +377,22 @@ class Board():
             piece.is_active = is_active
 
     def __get_king(self) -> King:
+        """__get_king.
+        Returns the kind of the side moving this turn
+
+        :param self:
+        :rtype: King
+        """
         return [i for i in self.moving if isinstance(i, King)].pop()
 
     def __evaluate_check(self) -> List[Piece]:
+        """__evaluate_check.
+        Calculates if a position is in check (if the king is under attack).
+        Returns a list of all the pieces which directly attack the king.
+
+        :param self:
+        :rtype: List[Piece]
+        """
         moves = self.__psuedolegal_moves(self.opposing)
         king = self.__get_king()
 
@@ -331,29 +401,31 @@ class Board():
         return [i for i in moves if moves[i][ResultKeys.capture]]
 
     def __evaluate_mate(self) -> WinState:
-        """_evaluate_mate.
-        Will evaluate if the position is checkmate or stalemate.
-        Returns one of self.CONTINUE, self.STALEMATE or self.CHECKMATE
+        """__evaluate_mate.
+        Uses the fully legal moves calculated for this state to determine if a position
+        is checkmate or stalemate.
 
-        :rtype: int
+        Returns keys defined in WinState.
+
+        :param self:
+        :rtype: WinState
         """
-
         if not self._allowed_moves.all_valid:
             if self.__is_check: return WinState.mate
             else: return WinState.stalemate
         return WinState.cont
 
-    def _evaluate_score(self):
-        """_evaluate_score."""
-        pass
+    # def _evaluate_score(self):
+    #     """_evaluate_score."""
+    #     pass
 
     def legal_moves(self, pieces: list[Piece] = None) -> ResultSet:
-        """get_move_set.
-        Wrapper to get a set of moves instead of just those for a singular piece. Works only with
-        the side "moving".
+        """legal_moves.
+        External api for interacting with all the legal moves in a position.
+        Calling this forces a full recalculation of the position.
 
         :param self:
-        :param pieces:
+        :param pieces: List of pieces to calculate on
         :type pieces: list[Piece]
         :rtype: ResultSet
         """
@@ -376,6 +448,14 @@ class Board():
         return results
 
     def calculate(self) -> None:
+        """calculate.
+        Should be called on every change of state.
+        Updates internal attributes used in calculation and rechecks the state of the game.
+        All the legal moves are redefined for the side moving and the win state is updated.
+
+        :param self:
+        :rtype: None
+        """
         self.__loc_map = { piece.position: piece for piece in self.moving + self.opposing if piece.is_active}
         self.__piece_map = { piece: piece.position for piece in self.moving + self.opposing if piece.is_active}
 
@@ -387,34 +467,14 @@ class Board():
         self.__win_state = self.__evaluate_mate()
 
     def valid_castle(self) -> List[Position]:
+        """valid_castle.
+        Gets the positions which would need to be entered for a valid castling move to be executed.
+        Walks through a checklist of conditions which must all be met to allow castling to be valid
+        such as not in check, king and rook have not moved, no pieces in between etc...
+
+        :param self:
+        :rtype: List[Position]
         """
-        Case right to castle is not true:
-            No move
-        Case in check:
-            No move
-        Case king not on start:
-            No move
-        Case Rook not on start:
-            No move
-        Case Any square between king and rook occupied:
-            No move
-        Case Attack on any square in castle path:
-            No move
-
-        Allow castle
-        Add move to king passives
-
-        - Listen for O-O or O-O-O
-        - For WHITE: (king then rook)
-            CASTLE_LONG  = (G1, F1)
-            CASTLE_SHORT = (C1, D1)
-        - For BLACK:
-            CASTLE_LONG  = (G8, F8)
-            CASTLE_SHORT = (C8, D8)
-        - Check if castling is valid ^
-        - Do the move
-        - Update the right to castle for this side.
-        """ 
         if self._to_move:
             castle_short = self._castle[0]
             castle_long  = self._castle[1]
@@ -466,7 +526,6 @@ class Board():
             if [i for i in path if i in enemy_moves.all_valid + enemy_moves.all_attack]:
                 continue
 
-
             final = [king_start.i, king_start.j]
             if rook.j == 0:
                 final[1] = final[1] - 2
@@ -482,6 +541,8 @@ class Board():
     def move(self, mov: Move) -> bool:
         """Runs a move in the current state. Takes a `Move` object.
         This method does NOT implement full validity checks. Raises `InvalidStateChange` exception.
+        Reupdates the state at the end of the call, and may return None. Still an active work in 
+        progress.
 
         :param self:
         :param mov:
@@ -535,6 +596,12 @@ class Board():
 
 
     def to_fen(self) -> str:
+        """to_fen.
+        Calculate the FEN string of the current state
+
+        :param self:
+        :rtype: str
+        """
         fields = []
         ranks = [["" for _ in range(8)] for _ in range(8)]
         # The rank of a piece will be calculated as 7 - i; 
@@ -581,9 +648,10 @@ class Board():
 
     @property
     def moving(self) -> List[Piece]:
-        """_get_moving.
-        Returns the active pieces moving in this state.
+        """moving.
+        All the active pieces moving on this turn.
 
+        :param self:
         :rtype: List[Piece]
         """
         if self._to_move == BLACK:
@@ -593,9 +661,10 @@ class Board():
 
     @property
     def opposing(self) -> List[Piece]:
-        """_get_opposing.
-        Returns the active pieces not moving in this state.
+        """opposing.
+        All the active pieces NOT moving on this turn.
 
+        :param self:
         :rtype: List[Piece]
         """
         if self._to_move == WHITE:
@@ -605,29 +674,43 @@ class Board():
 
     @property
     def all_pieces(self) -> List[Piece]:
+        """all_pieces.
+        All the active pieces on the board
+
+        :param self:
+        :rtype: List[Piece]
+        """
         return [i for i in self._white + self._black if i.is_active]
 
     @property
     def loc_map(self) -> Dict[Position, Piece]:
+        """loc_map.
+        Convenient mapping of Positions and the piece occupying them.
+
+        :param self:
+        :rtype: Dict[Position, Piece]
+        """
         return self.__loc_map
     
     @property
     def piece_map(self) -> Dict[Piece, Position]:
+        """piece_map.
+        Reverse mapping to loc_map, to speed up inverse lookups.
+
+        :param self:
+        :rtype: Dict[Piece, Position]
+        """
         return self.__piece_map
 
     @property
     def turn(self) -> int:
+        """turn.
+        The turn number (increments after black moves).
+
+        :param self:
+        :rtype: int
+        """
         return self._turn
-
-    @property
-    def pos_map(self) -> dict:
-        """Convenience attribute
-        Returns a hash map of each occupied position and its associated piece"""
-        return self.loc_map
-
-    @property
-    def pieces(self) -> list:
-        return self._black + self._white
 
     @property
     def is_check(self) -> List[Piece]:
@@ -643,9 +726,32 @@ class Board():
     
     @property
     def to_move(self) -> int:
-        """to_move."""
+        """to_move.
+        The colour which is next to apply a move.
+
+        :param self:
+        :rtype: int
+        """
         return self._to_move
 
     @property
-    def allied_moves(self) -> ResultSet:
+    def moves(self) -> ResultSet:
+        """moves.
+        The moves of the side which is next to apply a move
+
+        :param self:
+        :rtype: ResultSet
+        """
         return self._allowed_moves
+
+
+def construct_board(fen):
+    """construct_board.
+    Used to mock a board from a FEN string.
+
+    :param fen:
+    """
+    params = pieces_from_fen(fen)
+    board = Board(*params)
+    return board
+

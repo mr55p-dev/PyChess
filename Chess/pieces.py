@@ -9,16 +9,12 @@ except ImportError:
     from Chess.coordinate import Position
 
 class Piece:
+    """Piece
+    Wrapper for a chess piece. This is the base class, and is subclassed and overloaded
+    for each type of piece to make construction a bit more smooth.
+    Stores the projections, position, colour, move distance and activity of the piece.
     """
-	:param colour: 			White|Black
-	:param type: 			King|Queen|Rook|Bishop|Knight|Pawn
-	:param position: 		ChessVec
-							A vector containing piece position
-    :param kind:            String containing the letter of the piece.
-	:method move: 			updates position
-	:attr value: 			int
-							The value of the piece (based on kind)
-    """
+
     KING = "K"
     QUEEN = "Q"
     ROOK = "R"
@@ -28,12 +24,26 @@ class Piece:
     
     def __init__(
             self,
-            colour: int,
+            colour: bool,
             position: Position,
             kind: str,
             max_distance: int = 7,
             is_active: bool = True
         ) -> None:
+        """__init__.
+
+        :param colour: Piece colour
+        :type colour: bool
+        :param position: Piece position
+        :type position: Position
+        :param kind: Piece kind 
+        :type kind: str (K|Q|R|B|N|P)
+        :param max_distance: The furthest this piece can move
+        :type max_distance: int
+        :param is_active: If the piece should be considered in calculation
+        :type is_active: bool
+        :rtype: None
+        """
         if colour not in [WHITE, BLACK]: raise InvalidPiece("Not a valid colour")
         if kind not in PIECE_TYPES: raise InvalidPiece("Not a valid type")
         if max_distance not in range(1, 8): raise InvalidPiece("max_distance must be between 0, 8")
@@ -54,10 +64,16 @@ class Piece:
     def __eq__(self, other: 'Piece') -> bool:
         return self.__hash__() == hash(other)
 
+    def __neq__(self, other: 'Piece') -> bool:
+        return self.__hash__() != hash(other)
+
     def __hash__(self) -> int:
-        # 000(i)000(j)0000000(char)0(active)0(colour)
-        # 000000000000000(15 bits)
-        return 0 | (self._position.i<<13) | (self._position.j<<10) | (ord(self.kind)<<3) | (self._is_active<<2) | (self._colour<<1)
+        """__hash__.
+        15 bit integer hash mapped as follows:
+            000(i)000(j)0000000(char)0(active)0(colour)
+        :rtype: int
+        """
+        return 0 | (self._position.i<<12) | (self._position.j<<9) | (ord(self.kind)<<2) | (self._is_active<<1) | (self._colour)
 
     @property
     def colour(self) -> int:
@@ -103,14 +119,8 @@ class Piece:
         return [Vec(1,1)]
 
 
-    @staticmethod
-    def special_moves():
-        """The special moves a piece can participate in, if they are still valid
-        i.e castling for a king, en-passant,..."""
-
-
 class King(Piece):
-    def __init__(self, colour: int, position: Position) -> None:
+    def __init__(self, colour: bool, position: Position) -> None:
         super().__init__(colour, position, kind="K", max_distance=1)
 
     @property
@@ -118,7 +128,7 @@ class King(Piece):
         """The directions this piece can move in"""
         return [
             Vec(1, 1),
-            Vec(1, 0), 
+            Vec(1, 0),
             Vec(1, -1),
             Vec(0, 1),
             Vec(0, -1),
@@ -129,7 +139,7 @@ class King(Piece):
 
 
 class Queen(Piece):
-    def __init__(self, colour: int, position: Position) -> None:
+    def __init__(self, colour: bool, position: Position) -> None:
         super().__init__(colour, position, kind="Q")
 
     @property
@@ -147,7 +157,7 @@ class Queen(Piece):
         ]
 
 class Rook(Piece):
-    def __init__(self, colour: int, position: Position) -> None:
+    def __init__(self, colour: bool, position: Position) -> None:
         super().__init__(colour, position, kind="R")
 
     @property
@@ -161,7 +171,7 @@ class Rook(Piece):
         ]
 
 class Bishop(Piece):
-    def __init__(self, colour: int, position: Position) -> None:
+    def __init__(self, colour: bool, position: Position) -> None:
         super().__init__(colour, position, kind="B")
 
     @property
@@ -175,7 +185,7 @@ class Bishop(Piece):
         ]
 
 class Knight(Piece):
-    def __init__(self, colour: int, position: Position) -> None:
+    def __init__(self, colour: bool, position: Position) -> None:
         super().__init__(colour, position, kind="N", max_distance=1)
 
     @property
@@ -193,7 +203,7 @@ class Knight(Piece):
         ]
 
 class Pawn(Piece):
-    def __init__(self, colour: int, position: Position) -> None:
+    def __init__(self, colour: bool, position: Position) -> None:
         super().__init__(colour, position, kind="P", max_distance=2)
 
     @property

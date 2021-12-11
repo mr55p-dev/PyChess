@@ -1,78 +1,50 @@
-import pytest
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
+from Chess.coordinate import Position
 from Chess.pieces import Piece, King, Queen, Knight, Rook, Bishop, Pawn
-from itertools import product
-
-try:
-    from libpychess import Position
-except ImportError:
-    from Chess.coordinate import Position
-
-colours = [WHITE, BLACK]
-
-@pytest.mark.parametrize("colour,kind", product(colours, PIECE_TYPES))
-def test_base_piece(colour, kind):
-    piece = Piece(colour, Position((0, 0)), kind)
-
-    # assert str(piece) == kind
-    assert piece.colour == colour
-    assert piece.active == True
-
-    piece.capture()
-
-    assert piece.active == False
-
-@pytest.mark.parametrize("colour", colours)
-def test_king(colour):
-    piece = King(colour, Position((0, 0)))
-
-    assert piece.kind == "K"
-    # assert str(piece) == "K"
-    assert piece.active == True
 
 
-@pytest.mark.parametrize("colour", colours)
-def test_queen(colour):
-    piece = Queen(colour, Position((0, 0)))
+def test_init():
+    p = Piece(WHITE, Position("A1"), 'K', 7, is_active = True)
 
-    assert piece.kind == "Q"
-    # assert str(piece) == "Q"
-    assert piece.active == True
+def test_eq():
+    p = Piece(WHITE, Position("A1"), 'K', 7, is_active = True)
+    r = Piece(WHITE, Position("A1"), 'K', 7, is_active = True)
+    assert p == r
 
+def test_neq():
+    p = Piece(WHITE, Position("A1"), 'K', 7, is_active = True)
+    r = Piece(BLACK, Position("A1"), 'K', 7, is_active = True)
+    s = Piece(BLACK, Position("B1"), 'K', 7, is_active = True)
+    t = Piece(BLACK, Position("B1"), 'N', 7, is_active = True)
+    u = Piece(BLACK, Position("B1"), 'N', 7, is_active = False)
+    assert p != r != s != t != u
 
-@pytest.mark.parametrize("colour", colours)
-def test_rook(colour):
-    piece = Rook(colour, Position((0, 0)))
+def test_hash():
+    p = Piece(WHITE, Position("B7"), 'K', 7, is_active = True)
+    # 111 001 1001011 1 1
+    assert hash(p) == int(0b110001100101111)
 
-    assert piece.kind == "R"
-    # assert str(piece) == "R"
-    assert piece.active == True
+def test_active():
+    p = Piece(WHITE, Position("B7"), 'K', 7, is_active = True)
+    assert p.is_active == True
+    p.is_active = False
+    assert p.is_active == False
 
+def test_subclass_projections():
+    pos = Position("A1")
 
-@pytest.mark.parametrize("colour", colours)
-def test_bishop(colour):
-    piece = Bishop(colour, Position((0, 0)))
+    k = King(WHITE, pos)
+    q = Queen(WHITE, pos)
+    r = Rook(WHITE, pos)
+    n = Knight(WHITE, pos)
+    b = Bishop(WHITE, pos)
+    p = Pawn(WHITE, pos)
 
-    assert piece.kind == "B"
-    # assert str(piece) == "B"
-    assert piece.active == True
+    assert len(k.projections) == 8
+    assert len(q.projections) == 8
+    assert len(n.projections) == 8
 
+    assert len(r.projections) == 4
+    assert len(b.projections) == 4
 
-@pytest.mark.parametrize("colour", colours)
-def test_knight(colour):
-    piece = Knight(colour, Position((0, 0)))
-
-    assert piece.kind == "N"
-    # assert str(piece) == "N"
-    assert piece.active == True
-
-
-@pytest.mark.parametrize("colour", colours)
-def test_pawn(colour):
-    piece = Pawn(colour, Position((0, 0)))
-
-    assert piece.kind == "P"
-    # assert str(piece) == "P"
-    assert piece.active == True
-
-
+    assert len(p.projections) == 3

@@ -4,9 +4,25 @@ import math
 import Chess.constants as cons
 
 class Vec:
+    """Vec: lightweight vector class implementation
+    Used throught the program specifically to manipulate Position objects 
+    (a piece's position can be projected along a vector through scalar multiplicaiton).
+    This is the Python reference implementation - this class has been reimplemented in C++ 
+    to speed up computations by MoveAnalyser.
+    """
+
     __slots__ = ('i', 'j')
 
     def __init__(self, i: int, j: int) -> None:
+        """__init__.
+
+        :param self:
+        :param i: Row coordinate
+        :type i: int
+        :param j: Column coordinate
+        :type j: int
+        :rtype: None
+        """
         self.i: int = i
         self.j: int = j
 
@@ -14,37 +30,57 @@ class Vec:
         return str((self.i, self.j))
 
     def __eq__(self, o) -> bool:
+        """__eq__.
+
+        :param self:
+        :param o:
+        :type o: Position | Vec
+        :rtype: bool
+        
+        Equality checking only supports objects which implement i and j attributes (Vec, Position).
+        """
         return self.i == o.i and self.j == o.j
 
     def __ne__(self, o) -> bool:
-        return self.i != o.i and self.j != o.j
+        return self.i != o.i or self.j != o.j
 
     def __add__(self, o) -> 'Vec':
+        """__add__.
+
+        :param self:
+        :param o:
+        :type o: Position | Vec
+        :rtype: 'Vec'
+        """
         return Vec(self.i + o.i, self.j + o.j)
 
     def __sub__(self, o) -> 'Vec':
         return Vec(self.i - o.i, self.j - o.j)
 
-    def __mul__(self, scalar) -> 'Vec':
+    def __mul__(self, scalar: int) -> 'Vec':
+        """__mul__
+
+        :param self:
+        :param scalar:
+        :type scalar: int
+        :rtype: 'Vec'
+
+        Only scalar multiplication is supported for speed.
+        """
         return Vec(self.i * scalar, self.j * scalar)
 
 class Position:
+    """Position
+    Wrapper for a board position. Also implemeted in C++ for speed.
+    Uses __slots__ for preallocation of attributes so does not support
+    dynamic assignment. 
+    
+    This is mainly designed to make handling chess positions more simple -
+    locations can be defined using the algebraic (A-H)(1-8) notation which is much
+    more intuitive. Coordinates are represented internally by (0-7)(0-7) still.
+    Invalid positions may be instantiated however self.is_valid can be used to check
+    them.
     """
-	Wrapper for the positions on a chess board.
-	Can convert to/from algebraic ("A1", "B2"..."H8") notation.
-
-    :param pos str|tuple: Either a string representing
-                            algebraic notation, or a set
-                            of i and j coordinates as a
-                            tuple or list.
-	:attr coord: [0-7, 0-7]
-	:attr algebraic: "[A-H][0-7]"
-
-    rank and file are internally represented as `i` and `j` to avoid some confusion,
-    relating them to matrix notation feels more familiar.
-    - consider implementing __slots__
-    """
-
     __slots__ = ('i', 'j')
 
     _TYPE_ALG = str
@@ -55,10 +91,8 @@ class Position:
         """__init__.
 
         :param self:
-        :param pos str|tuple: Either a string representing
-                                algebraic notation, or a set
-                                of i and j coordinates as a
-                                tuple or list.
+        :param pos: 
+        :type pos: (int, int) | str[2]
         :rtype: None
         """
         if isinstance(pos, str):
@@ -66,12 +100,7 @@ class Position:
         else:
             self._from_grid(pos)
 
-        # if self._i not in cons.CART_COORD: print(self._i); raise InvalidFormat
-        # if self._j not in cons.CART_COORD: raise InvalidFormat
-
     def _from_algebraic(self, pos: _TYPE_ALG) -> None:
-        if len(pos) != 2: raise InvalidFormat
-    
         # file 0  A   65
         #      1  B   66
         #      2  C   67
@@ -85,10 +114,16 @@ class Position:
         self.i = pos[0]
         self.j = pos[1]
 
-    def _validate_position(self) -> bool:
-        """Validate that the current position is on the board"""
-        if self.i not in cons.CART_COORD: raise InvalidFormat
-        if self.j not in cons.CART_COORD: raise InvalidFormat
+    def is_valid(self) -> bool:
+        """is_valid.
+
+        :param self:
+        :rtype: bool
+
+        Validate that the current position is on the board
+        """
+        if self.i > 7 or self.i < 0 or self.j > 7 or self.j < 0:
+            return False
         return True
 
     def __repr__(self) -> str:
@@ -115,21 +150,24 @@ class Position:
         """Support subtraction by a vector Vec"""
         return Position((self.i - o.i, self.j - o.j))
 
-    def path_to(self, o: 'Position') -> List['Position']:
-        """path_to. Calculates the squares from this position to another position.
-        Given `a.path_to(b)` the position of `a` will be included, but not the position of `b`
+    def path_to(self, to: 'Position') -> List['Position']:
+        """path_to.
+        A.path_to(B) returns a list of positions from A (inclusive) to B (exclusive).
+        Gives all positions diagonally, vertically or horizontally, and if a non-linear
+        path is requested the value [A] is returned.
 
         :param self:
-        :param o:
-        :rtype: List['Position']
+        :param to:
+        :type to: Position
+        :rtype: List[Position]
         """
         sign = lambda x: int(math.copysign(1, x))
-        di = o.i - self.i
-        dj = o.j - self.j
-        ri = range(self.i, o.i, sign(di))
-        rj = range(self.j, o.j, sign(dj))
+        di = to.i - self.i
+        dj = to.j - self.j
+        ri = range(self.i, to.i, sign(di))
+        rj = range(self.j, to.j, sign(dj))
         # If there is a straight or diagonal path between the pieces then give that
-        if len(ri) == len(rj): 
+        if len(ri) == len(rj):
             return [Position((i, j)) for i, j in zip(ri, rj)]
         elif len(ri) == 0:
             return [Position((i, j)) for i, j in zip(repeat(self.i), rj)]
@@ -139,22 +177,30 @@ class Position:
         else: return [Position((self.i, self.j))]
 
     def __hash__(self) -> int:
-        """Generate a hash of the position
-        allows positions to be the key of the _loc_map dict in 
-        `Game`"""
-        return 0 | (self.i<<3) | self.j 
+        """__hash__.
+        Returns a 6-bit integer (iiijjj) uniquely ideitifying each position on the board.
+
+        :param self:
+        :rtype: int
+        """
+        return 0 | (self.i<<3) | self.j
 
     @property
     def algebraic(self) -> str:
         """algebraic.
+
+        Returns the algebraic representation of the position ([A-H][1-8])
         :param self:
         :rtype: str
         """
-        return cons.FILES[self.j] + str(self.i + 1)
+        return f"{chr(self.j + 65)}{chr(self.i + 49)}"
+
 
 
 class Move():
-    
+    """Move wrapper class.
+    Simple class to wrap properties required to execute a move and define an API for
+    view functions to use to interact with Board and Game."""
     __slots__ = ('__start', '__end', '__takes', '__is_castle')
 
     def __init__(self, 
@@ -163,6 +209,18 @@ class Move():
                  takes: bool,
                  castle: str = ''                
                  ):
+        """Move
+
+        :param self:
+        :param start: The start position of the piece moving
+        :type start: Position
+        :param end: The end position of the piece moving
+        :type end: Position
+        :param takes: If the move is a capture (required)
+        :type takes: bool
+        :param castle: If the move is castling (optional, default False)
+        :type castle: str
+        """
         self.__start = start
         self.__end = end
         self.__takes = takes
