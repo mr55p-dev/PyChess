@@ -4,8 +4,14 @@
 ### Project title: Chess-bot
 
 ### Student name: Ellis Lunnon
-  
-This project will implement Chess in Python, as well as providing functionality to evaluate the position the game is currently in, and suggest some good continuing moves.
+
+This repository contains two separate codebases:
+- A notebook detailing the implementation of a neural network trained to predict the valid moves of a given chess position using only the location of the pieces on the board.
+- A module containing the tools to rapidly generate training data from chess games written in PGN notation.
+
+The notebook leverages Tensorflow 2.5 and several of the modules in the Python data science ecosystem to train neural networks on the training data we can mine from archived online chess games.
+
+The module is an implementation of Chess in Python (for 3.7) designed to enable computing the end state of a Chess game given a sequence of moves quickly. The core implementation has no external dependencies and is written entirely on top of the standard library. Several parts of the underlying module have been rewritten in C++ and interface using the pybind11 module to improve the speed. 
 
 ## Current progress
 - [x] Standard piece moves
@@ -19,11 +25,7 @@ This project will implement Chess in Python, as well as providing functionality 
 - [ ] En-passant
 - [ ] Piece promotion
 
-## Bugfixes
-- [ ] Properly validate capturing moves
-- [ ] Improve error handling for castling
-- [ ] Add in move validation in state
-- [ ] Refactor parsing moves into helpers
+# Initial project outline
 
 ## Classes, functions, etc
 ```
@@ -122,12 +124,4 @@ func evaluate_board
 				do_evaluate new_board
 		elif d = depth:
 			evaluations[val] = last move
-
-
 ```
-
-												     -> view controller 
-Pieces -> board: {position: piece} -> Game [board]   -> process
-items 	  state						  stack of states   can parse and manipulate a game
-
-[See here for a guide to writing markdown.](https://guides.github.com/features/mastering-markdown/)
