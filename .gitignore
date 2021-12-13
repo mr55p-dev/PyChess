@@ -6,3 +6,4 @@
 .ipynb_checkpoints/
 *.pyc
 /**/logs/
+debug_script.py

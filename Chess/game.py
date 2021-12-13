@@ -1,13 +1,16 @@
 import re
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 from Chess.state import Board
 from Chess.coordinate import Move
 from Chess.exceptions import MoveParseError
+import logging, logging.handlers
 
 try: 
     from libpychess import Position
 except ImportError: 
     from Chess.coordinate import Position
+
+log = logging.getLogger("Game")
 
 class Game():
     """Game
@@ -57,6 +60,7 @@ class Game():
         elif castle_type == "short":
             long = False
         else:
+            log.error(f"Failed to parse castle '{castle_type}': Matched for a castle but with no group contents")
             raise ValueError("Matched for a castle but with no group contents")
 
         if self.peek.to_move:
@@ -81,7 +85,7 @@ class Game():
 
         return Move(start, end, takes, castles)
 
-    def __parse_move(self, move_str: str) -> Move:
+    def __parse_move(self, move_str: str) -> Optional[Move]:
         """__parse_move.
         Parse a standard chess move (notation such as Qd4, a5, Bxc1... supported).
         Used to parse PGN notation and to allow basic interactivity.
@@ -95,7 +99,8 @@ class Game():
         matches = re.findall(pattern, move_str)
 
         if not matches:
-            raise ValueError("Invalid move")
+            log.error(f"Failed to parse {move_str}: no regex match on this string")
+            log.debug(f"Failed at state: {self.peek.to_fen()}")
             
         move_repr = matches.pop()
 
@@ -108,7 +113,10 @@ class Game():
         if move_repr[2]:
             takes = True
 
-        if not move_repr[3]: raise MoveParseError("A valid move could not be found")
+        if not move_repr[3]:
+            log.error(f"Failed to parse {move_str}: no destination square provided")
+            log.debug(f"Failed at state: {self.peek.to_fen()}")
+            return None
         end = Position(move_repr[3].upper())
 
         if end in self.peek.loc_map:
@@ -116,7 +124,6 @@ class Game():
 
         start = move_repr[1]
         if len(start) == 2:
-            ## ALG_POS
             start = Position(start.upper())
         else:
             piece = move_repr[0]
@@ -127,20 +134,19 @@ class Game():
             piece_candidates = [p for p in init_piece_candidates if p.kind == piece]
 
             if not piece_candidates:
-                # Add logging here
-                print("poo")
-                return False 
-                raise MoveParseError(f"Not enough information to move to {end}")
+                log.error(f"Failed to parse {move_str}: no candidate pieces found.")
+                log.debug(f"Failed at state: {self.peek.to_fen()}")
+                return None
             elif len(piece_candidates) > 1:
-                # Hacky way to check the same file
+                # Hacky way to check the pieces are in the same file
                 piece_candidates = [i \
                               for i in piece_candidates \
                               if str(self.peek.piece_map[i])[0] == start.upper()
                             ]
                 if not len(piece_candidates) == 1:
-                    # Add logging
-                    # return None
-                    raise MoveParseError(f"Multiple pieces may move to {end}")
+                    log.warn(f"Failed to parse {move_str}: multiple candidate pieces found.")
+                    log.debug(f"Failed at state: {self.peek.to_fen()}")
+                    return None
             start = self.peek.piece_map[piece_candidates.pop()]
 
         return Move(start, end, takes)
@@ -153,9 +159,9 @@ class Game():
         :param self:
         :rtype: Board
         """
-        if self.__state: 
+        if self.__state:
             return self.__state
-        else: 
+        else:
             raise ValueError("No state to show")
 
     def execute_move(self, move: Move) -> bool:
@@ -180,9 +186,7 @@ class Game():
         """
         self.move_hist.append(move_str)
         move = self.__parse_move(move_str)
-        if not move: 
-            print(f"Failed to parse move {move_str}")
-            return False
+        if not move: return False
         return self.peek.move(move)
 
     def show_board(self):

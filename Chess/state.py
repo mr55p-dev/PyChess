@@ -5,6 +5,7 @@ from Chess.coordinate import Move
 from Chess.helpers import new_game, pieces_from_fen
 from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook
 from Chess.result import Result, ResultKeys, ResultSet
+import logging
 
 try:
     import libpychess
@@ -12,6 +13,7 @@ try:
 except ImportError:
     from Chess.coordinate import Position 
 
+log = logging.getLogger("State")
 
 class Board():
     """Board.
@@ -550,7 +552,7 @@ class Board():
         """
 
         if mov.start not in self.loc_map:
-            print("Start is not a piece")
+            log.error(f"{mov.start} does not appear as a piece in loc_map")
             return False
 
         # Set the new position

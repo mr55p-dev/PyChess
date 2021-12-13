@@ -16,7 +16,7 @@ def profile(output_file=None, sort_by='cumulative', strip_dirs=False):
         @wraps(func)
         def wrapper(*args, **kwargs):
             t = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
-            _output_file = output_file or "profile_logs/" + func.__name__ + t + '.prof'
+            _output_file = output_file or "profile_logs/" + func.__name__ + "-" + t + '.prof'
             pr = cProfile.Profile()
             pr.enable()
             retval = func(*args, **kwargs)
@@ -43,11 +43,11 @@ def make_board(games):
     for game in games:
         g = Game()
         for move in game:
-            x = g.execute_move_str(move)
-            print(move)
+            g.execute_move_str(move)
 
-with open("./generated_data/games.pickle", "rb") as f:
+with open("./generated_data/lichess_2013.pickle", "rb") as f:
     li = pickle.load(f)
 
-games = li.pop()
-make_board([games])
+games = li[:5]
+
+make_board(games)
