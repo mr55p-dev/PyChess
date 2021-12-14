@@ -7,3 +7,4 @@
 *.pyc
 /**/logs/
 debug_script.py
+tensorboard_logs/

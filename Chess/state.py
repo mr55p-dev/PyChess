@@ -421,7 +421,7 @@ class Board():
     #     """_evaluate_score."""
     #     pass
 
-    def legal_moves(self, pieces: list[Piece] = None) -> ResultSet:
+    def legal_moves(self, pieces: List[Piece] = None) -> ResultSet:
         """legal_moves.
         External api for interacting with all the legal moves in a position.
         Calling this forces a full recalculation of the position.
