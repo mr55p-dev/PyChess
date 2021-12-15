@@ -11,6 +11,8 @@ try:
     import libpychess
     from libpychess import Position
 except ImportError:
+    print("libpychess not found, using python fallback")
+    USE_CPP = False
     from Chess.coordinate import Position 
 
 log = logging.getLogger("State")

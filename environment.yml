@@ -25,4 +25,5 @@ dependencies:
         - bayesian-optimization
         - gym
         - kaggle
-        
+        - graphviz
+        - pyrotechnics

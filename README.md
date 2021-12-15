@@ -11,6 +11,14 @@ This repository contains two separate codebases:
 
 The notebook leverages Tensorflow 2.5 and several of the modules in the Python data science ecosystem to train neural networks on the training data we can mine from archived online chess games.
 
+## Install instructions
+- Clone this repository with `git clone --recursive https://github.com/mpags-python/coursework2021-sub3-mr55p-dev.git`
+- Create the anaconda environment `chess-env` with `conda env create -f=environment.yml`
+- Optionally build the `libpychess` module with the instructions [here](https://github.com/mr55p-dev/pychessbinds).
+- Run a chess game using `python3 -m Chess`
+- Create training data with `python3 ./generate_data.py`
+- Open the notebook `task.ipynb` using `jupyter notebook` at the command line.
+
 The module is an implementation of Chess in Python (for 3.7) designed to enable computing the end state of a Chess game given a sequence of moves quickly. The core implementation has no external dependencies and is written entirely on top of the standard library. Several parts of the underlying module have been rewritten in C++ and interface using the pybind11 module to improve the speed. 
 
 ## Current progress
