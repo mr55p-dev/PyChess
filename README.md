@@ -19,6 +19,10 @@ The notebook leverages Tensorflow 2.5 and several of the modules in the Python d
 - Create training data with `python3 ./generate_data.py`
 - Open the notebook `task.ipynb` using `jupyter notebook` at the command line.
 
+To run a profile of the app, run `python3 ./profile_app` which will generate a file `make_board` appended by the date.
+To visualise this file run `snakeviz path/to/file` and a browser window will open with an interactive visualisation of
+the call stack for a set of example chess games.
+
 The module is an implementation of Chess in Python (for 3.7) designed to enable computing the end state of a Chess game given a sequence of moves quickly. The core implementation has no external dependencies and is written entirely on top of the standard library. Several parts of the underlying module have been rewritten in C++ and interface using the pybind11 module to improve the speed. 
 
 ## Current progress
