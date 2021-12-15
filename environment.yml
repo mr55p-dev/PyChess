@@ -18,6 +18,7 @@ dependencies:
     - flask
     - boto3
     - snakeviz
+    - tabulate
     - pip:
         - tensorflow-macos==2.5.0
         - tensorflow-metal==0.1.2

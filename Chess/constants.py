@@ -2,7 +2,7 @@
 from typing import Iterator
 
 
-USE_CPP = True 
+USE_CPP = True
 
 # Define the values for piece/player colours
 WHITE = True

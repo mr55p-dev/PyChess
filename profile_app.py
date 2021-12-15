@@ -45,7 +45,7 @@ def make_board(games):
         for move in game:
             g.execute_move_str(move)
 
-with open("./generated_data/lichess_2013.pickle", "rb") as f:
+with open("./generated_data/lichess_db_standard_rated_2013-01.pickle", "rb") as f:
     li = pickle.load(f)
 
 games = li[:5]
