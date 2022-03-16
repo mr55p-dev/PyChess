@@ -3,7 +3,7 @@ module, and confirm that this submission complies with the policy. The content o
 with any significant material copied or adapted from other sources clearly indicated and attributed."""
 
 from typing import List
-from Chess.constants import PIECE_TYPES, WHITE, BLACK, USE_CPP
+from Chess.constants import PIECE_TYPES, WHITE, BLACK
 from Chess.coordinate import Vec
 from Chess.exceptions import InvalidPiece
 

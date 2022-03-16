@@ -28,9 +28,7 @@ class Game():
         self.__state: Optional[Board] = None
         self.__view_callback = view_callback
 
-        if start_state: board = start_state
-        else: board = Board()
-
+        board = start_state or Board()
         self.__state = board
         self.move_hist = [];
 
@@ -41,14 +39,10 @@ class Game():
         :param self:
         :rtype: int
         """
-        if self.peek.is_check:
+        if self.peek.is_check or not self.peek.is_mate and not self.peek.is_stale:
             return 1
-        elif self.peek.is_mate:
-            return 0
-        elif self.peek.is_stale:
-            return 0
         else:
-            return 1
+            return 0
     
     def __parse_castle(self, castle_type: str) -> Move:
         """__parse_castle.
@@ -105,12 +99,12 @@ class Game():
         if not matches:
             log.error(f"Failed to parse {move_str}: no regex match on this string")
             log.debug(f"Failed at state: {self.peek.to_fen()}")
-            
+
         move_repr = matches.pop()
 
         if move_repr[4] and move_repr[5]:
             return self.__parse_castle('long')
-        elif move_repr[4] and not move_repr[5]:
+        elif move_repr[4]:
             return self.__parse_castle('short')
 
         takes = False
@@ -147,7 +141,7 @@ class Game():
                               for i in piece_candidates \
                               if str(self.peek.piece_map[i])[0] == start.upper()
                             ]
-                if not len(piece_candidates) == 1:
+                if len(piece_candidates) != 1:
                     log.warn(f"Failed to parse {move_str}: multiple candidate pieces found.")
                     log.debug(f"Failed at state: {self.peek.to_fen()}")
                     return None

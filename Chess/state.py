@@ -2,22 +2,16 @@
 module, and confirm that this submission complies with the policy. The content of this file is my own original work,
 with any significant material copied or adapted from other sources clearly indicated and attributed."""
 
+import logging
+from abc import abstractmethod
 from typing import Dict, List, Tuple
 
-from Chess.constants import BLACK, WHITE, MoveSignal, WinState, USE_CPP
-from Chess.coordinate import Move
+from Chess.constants import BLACK, WHITE, WinState
+from Chess.coordinate import Position, Move
+from Chess.exceptions import InvalidCastleType, InvalidMoveError
 from Chess.helpers import new_game, pieces_from_fen
-from Chess.pieces import Bishop, King, Knight, Pawn, Piece, Queen, Rook
-from Chess.result import Result, ResultKeys, ResultSet
-import logging
-
-try:
-    import libpychess
-    from libpychess import Position
-except ImportError:
-    print("libpychess not found, using python fallback")
-    USE_CPP = False
-    from Chess.coordinate import Position 
+from Chess.pieces import King, Piece, Rook
+from Chess.result import ResultKeys, ResultSet
 
 log = logging.getLogger("State")
 
@@ -39,16 +33,11 @@ class Board():
                  half_moves_since_pawn: int = 0,
                  turn: int = 1,
                  ) -> None:
-        
-        if USE_CPP:
-            self.__psuedolegal_moves = self.__cpp_psuedolegal_moves
-        else:
-            self.__psuedolegal_moves = self.__py_psuedolegal_moves
+
 
         # Store the fen information given and piece representations
         # Construct a map of location: piece
-        if starting_position: self._white, self._black = starting_position
-        else: self._white, self._black = new_game()
+        self._white, self._black = starting_position or new_game()
         self._turn = turn
 
         # Define convenient variables so we know which pieces are moving
@@ -63,28 +52,12 @@ class Board():
         # This is just while castling and en-passant is not implemented
         self._castle = self.__parse_castle(can_castle) # castle[4] : white kingside, queenside, black kingside, queenside
 
-        
-        if USE_CPP:
-            # Define some conversion tables
-            self._cpp_py_piece_conversion = {
-                "K" : libpychess.pieces.king,
-                "Q" : libpychess.pieces.queen,
-                "R" : libpychess.pieces.rook,
-                "N" : libpychess.pieces.knight,
-                "B" : libpychess.pieces.bishop,
-                "P" : libpychess.pieces.pawn,
-            }
-
-            self._py_cpp_conv = {
-                "k" : King,
-                "q" : Queen,
-                "r" : Rook,
-                "n" : Knight,
-                "b" : Bishop,
-                "p" : Pawn
-            }
-
+        # Generate all the important stuff
         self.calculate()
+
+        # Create a history list
+        self.history = list(self.to_fen())
+
 
     def __repr__(self) -> str:
         """__repr__.
@@ -96,7 +69,7 @@ class Board():
         board = [[" " for _ in range(8)] for _ in range(8)]
         for loc, piece in self.loc_map.items():
             board[loc.i][loc.j] = piece.kind
-        return "\n".join([" ".join([cell for cell in row]) for row in board])
+        return "\n".join([" ".join(list(row)) for row in board])
 
     def __parse_castle(self, castle_str) -> List[bool]:
         """__parse_castle.
@@ -118,187 +91,11 @@ class Board():
             
         return castling
 
-    def __cpp_get_pieces(self):
-        """__cpp_get_pieces.
-        Converts all the active pieces in the state into the version defined by libpychess
+    @abstractmethod
+    def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
+        """Must be implemented by a subclass"""
+        pass
 
-        :param self:
-        """
-        return [
-            self._cpp_py_piece_conversion[p.kind](p.colour, Position(p.position.i, p.position.j)) 
-            for p in self.all_pieces
-        ]
-
-    def __py_convert_result(self, c_result):
-        """__py_convert_result.
-        Converts the output of libpychess MoveAnalyser into the same type returned by
-        __py_psuedolegal_moves
-
-        :param self:
-        :param c_result: Value returned by libpychess::MoveAnalyser.PsuedolegalMoves
-        """
-        result = ResultSet(
-            {self._py_cpp_conv[k.kind](k.colour, Position(k.position.i, k.position.j)) : Result(v) 
-             for k, v in c_result.items()}
-        )
-        return result
-
-    def __cpp_psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
-        """__cpp_psuedolegal_moves.
-        Wraps function calls to convert and retrieve data from the libpychess module.
-
-        :param self:
-        :param pieces:
-        :type pieces: List[Piece]
-        :rtype: ResultSet
-        """
-        # Get the pieces into the correct format (might be helpful to just change all my underlying
-        # types lol)
-        c_pieces = self.__cpp_get_pieces()
-        analysis = libpychess.MoveAnalyser(c_pieces)
-
-        # This isnt exacltly the same api as the python version
-        # Needs to be updated so we instantiate a new MoveAnalyser on each
-        # self.calculate (and free the previous)
-        # Then we can pass the constructor a list of each piece, and
-        # slightly change the PsuedolegalMoves call to take a pointer 
-        # to a list of pieces to analyse instead of having to go through all the pain
-        # For now it works since we only ever look at one colour at a time.
-        # Need to account for the edge case of when we check for checkmate and have to 
-        # evaluate a position without the king there... That relies on the live update of
-        # the list and so we might need to define a callback from that function
-        # to reinstantiate our analyser object each time - or could try some funkier stuff...
-        c_result = analysis.PsuedolegalMoves(pieces[0].colour)
-        py_result = self.__py_convert_result(c_result)
-        return py_result
-
-    def __py_allowed_move(self, position, piece) -> MoveSignal:
-        """__py_allowed_move.
-
-        Calculates what the "type" of move which has been sent is.
-
-        Returns MoveSignal.empty if a move is allowed
-        Returns MoveSignal.blocked if a move is blocked by an allied piece
-        Returns MoveSignal.checking_attack if a move is a check
-        Returns MoveSignal.capture if a move is a capture
-        Returns MoveSignal.disallowed if a move is not allowed (such as pawn push)
-
-
-        :param self:
-        :param position: The position being evaluated (laneded on)
-        :param piece: The piece being evaluated
-        :rtype: MoveSignal
-        """
-        capture_allowed = True
-        passive_allowed = True
-        # Faster than using isinstance calls
-        if piece.kind == 'P':
-            start_position = self.piece_map[piece]
-            # The pieces start at either i=1 or i=6
-            start = 1 if piece.colour == WHITE else 6
-            has_moved = bool(start - start_position.i)
-            if start_position.j - position.j != 0:
-                passive_allowed = False
-            if start_position.j - position.j == 0:
-                capture_allowed = False
-            if has_moved and start_position.i - position.i in [2, -2]:
-                return MoveSignal.disallowed
-
-        # Check if the destination square is occupied and act accordingly
-        occupier = None
-        if position in self.loc_map:
-            occupier = self.loc_map[position]
-
-        if not occupier:
-            if passive_allowed: return MoveSignal.empty
-            elif capture_allowed: return MoveSignal.attacks
-        elif occupier.colour == piece.colour:
-            if capture_allowed: return MoveSignal.blocked
-        else:
-            if capture_allowed and isinstance(occupier, King):
-                return MoveSignal.checking_attack
-            elif capture_allowed:
-                return MoveSignal.capture
-        return MoveSignal.disallowed
-
-    def __py_psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
-        """__py_psuedolegal_moves.
-        Calculates the moves each piece could make if not constrained by checks, etc.
-        This is designed to separate move calculation out into a two step process, to
-        avoid having to create and analyse future states to evaluate check or checkmate.
-
-        This abstraction allows the board to very quickly mock the moves that the enemy could make
-        and this approach relies on the rule that only one side may be in check at any one time.
-
-        :param self:
-        :param pieces: Pieces to find moves for
-        :type pieces: List[Piece]
-        :rtype: ResultSet
-        """
-        # Preallocate the dict to hpoefully speed things up a bit
-        results = ResultSet(dict.fromkeys(pieces))
-        for piece in pieces:
-            result = Result()
-            for dir in piece.projections:
-                # Iterate over all the directions a piece can move in
-                # Reset the pinned marker.
-                pinned = None
-                for step in range(1, piece.distance + 1):
-                    # Count up all the steps the piece can take until it meets
-                    # a stop condition
-                    loc = self.piece_map[piece]
-                    ni = loc.i + (dir.i * step)
-                    nj = loc.j + (dir.j * step)
-                    if ni > 7 or ni < 0 or nj > 7 or nj < 0: break
-                    landed_on = Position((ni, nj))
-                    # try: landed_on = self.piece_map[piece] + (dir * step)
-                    # except InvalidFormat: break
-                    allowed = self.__py_allowed_move(landed_on, piece)
-
-                    # Reordered expressions to make use of short-circuiting
-                    if not pinned and allowed == MoveSignal.empty :
-                        # Do not store this location if we are searching for a pin
-                        # Store this location as a passive, and an attack for pieces which are
-                        # not pawns
-                        if not isinstance(piece, Pawn):
-                            result[ResultKeys.attack].append(landed_on)
-                        result[ResultKeys.passive].append(landed_on)
-                    elif not pinned and allowed == MoveSignal.capture:
-                        # Do not store a capture on a normal piece if looking for a pin
-                        # Store a piece which can be captured as a capture, and an attack
-                        # since that square is controlled by the piece so an enemy king could not
-                        # move there.
-                        result[ResultKeys.capture].append(landed_on)
-                        result[ResultKeys.attack].append(landed_on)
-                        # Snapshot the current location and check if this piece which can
-                        # be captures is pinned to the king.
-                        pinned = Position((landed_on.i, landed_on.j))
-                    elif not pinned and allowed == MoveSignal.attacks: 
-                        # Do not save an attack if we are scanning for a pin
-                        # This will only ever be pawn attacks (to separate their passive
-                        # capturing and non-capturing moves)
-                        result[ResultKeys.attack].append(landed_on); break
-                    elif allowed == MoveSignal.checking_attack:
-                        # Store a check if we are not looking for a pin
-                        if pinned:
-                            result[ResultKeys.pin].append(pinned) 
-                            break
-                        result[ResultKeys.capture].append(landed_on) 
-                        break
-                    elif allowed == MoveSignal.blocked:
-                        # Do not consider a piece defended if we are looking at a pin
-                        if pinned: break
-                        # Store a piece as defended if an allied piece sees it
-                        result[ResultKeys.defend].append(landed_on)
-                        break
-                    elif allowed == MoveSignal.disallowed:
-                        # Do not continue looking if a move is disallowed
-                        break
-
-            results[piece] = result
-
-        return results
-     
     def __filter_moves(self, results: ResultSet) -> ResultSet:
         """__filter_moves.
         Applies the constraints of checks and pins to the given "psuedolegal" results.
@@ -323,7 +120,7 @@ class Board():
         if king in results:
             # Mark the king as captured
             king.active = False
-            
+
             # Calculate the moves for the enemy pieces without the king there
             opposing_moves = self.__psuedolegal_moves(self.opposing)
 
@@ -353,8 +150,7 @@ class Board():
 
             # Finally, if attackers <=1 resolve pins.
             piece_loc = self.piece_map[piece]
-            pin = opposing_moves.lookup_pin(piece_loc)
-            if pin:
+            if pin := opposing_moves.lookup_pin(piece_loc):
                 # Only valid moves for a pinned piece will be on the axis of the opposing piece
                 # and king.
                 path = self.piece_map[pin].path_to(self.piece_map[king])
@@ -419,13 +215,8 @@ class Board():
         :rtype: WinState
         """
         if not self._allowed_moves.all_valid:
-            if self.__is_check: return WinState.mate
-            else: return WinState.stalemate
+            return WinState.mate if self.__is_check else WinState.stalemate
         return WinState.cont
-
-    # def _evaluate_score(self):
-    #     """_evaluate_score."""
-    #     pass
 
     def legal_moves(self, pieces: List[Piece] = None) -> ResultSet:
         """legal_moves.
@@ -439,9 +230,7 @@ class Board():
         """
         # Either use all the moving pieces, or the list of pieces
         # passed which also exist in the moving side.
-        if not pieces: pieces = self.moving
-        else: pieces = [i for i in pieces if i in self.moving]
-
+        pieces = self.moving if not pieces else [i for i in pieces if i in self.moving]
         # Get psuedolegal moves for allied pieces
         psl = self.__psuedolegal_moves(pieces)
 
@@ -535,18 +324,14 @@ class Board():
                 continue
 
             final = [king_start.i, king_start.j]
-            if rook.j == 0:
-                final[1] = final[1] - 2
-            else:
-                final[1] = final[1] + 2
-
+            final[1] += -2 if rook.j == 0 else 2
             final = (final[0], final[1])
-                
+
             valid.append(Position(final))
 
         return valid
 
-    def move(self, mov: Move) -> bool:
+    def move(self, mov: Move) -> 'Board':
         """Runs a move in the current state. Takes a `Move` object.
         This method does NOT implement full validity checks. Raises `InvalidStateChange` exception.
         Reupdates the state at the end of the call, and may return None. Still an active work in 
@@ -559,7 +344,7 @@ class Board():
 
         if mov.start not in self.loc_map:
             log.error(f"{mov.start} does not appear as a piece in loc_map")
-            return False
+            raise InvalidMoveError(f"{mov.start} does not appear as a piece in loc_map")
 
         # Set the new position
         moving_piece = self.loc_map[mov.start]
@@ -577,10 +362,12 @@ class Board():
                 rook_j = 0
                 rook_end_j = 3
             else:
-                raise Exception()
+                raise InvalidCastleType()
+
             rook = self.loc_map[Position((rook_i, rook_j))]
             rook_end = Position((rook_i, rook_end_j))
             self.__update_piece(rook, rook_end)
+
             if self._to_move:
                 self._castle[0] = False
                 self._castle[1] = False
@@ -600,8 +387,11 @@ class Board():
             self._turn = self._turn + 1
 
         self.calculate()
-        return True
 
+        # Save the FEN string to the history
+        self.history.append(self.to_fen())
+
+        return self
 
     def to_fen(self) -> str:
         """to_fen.
@@ -731,7 +521,7 @@ class Board():
     @property
     def is_stale(self) -> bool:
         return self.__win_state == WinState.stalemate
-    
+
     @property
     def to_move(self) -> int:
         """to_move.
@@ -752,7 +542,6 @@ class Board():
         """
         return self._allowed_moves
 
-
 def construct_board(fen):
     """construct_board.
     Used to mock a board from a FEN string.
@@ -760,6 +549,5 @@ def construct_board(fen):
     :param fen:
     """
     params = pieces_from_fen(fen)
-    board = Board(*params)
-    return board
+    return Board(*params)
 
