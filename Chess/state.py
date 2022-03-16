@@ -1,19 +1,22 @@
-"""I, Ellis Lunnon, have read and understood the School's Academic Integrity Policy, as well as guidance relating to this
-module, and confirm that this submission complies with the policy. The content of this file is my own original work,
-with any significant material copied or adapted from other sources clearly indicated and attributed."""
-
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple
 
-from Chess.constants import BLACK, WHITE, WinState
-from Chess.coordinate import Position, Move
+from Chess.constants import WinState, BLACK, WHITE
+from Chess.coordinate import Move, PositionFactory
 from Chess.exceptions import InvalidCastleType, InvalidMoveError
-from Chess.helpers import new_game, pieces_from_fen
-from Chess.pieces import King, Piece, Rook
+from Chess.helpers import pieces_from_fen, new_game
+from Chess.pieces import PieceFactory
 from Chess.result import ResultKeys, ResultSet
 
-log = logging.getLogger("State")
+# Get the correct pieces for this run
+Piece = PieceFactory().get_piece("base")
+King = PieceFactory().get_piece("K")
+Rook = PieceFactory().get_piece("R")
+
+# Get the correct position object
+Position = PositionFactory().get_position()
+
 
 class Board(ABC):
     """Board.
@@ -26,7 +29,7 @@ class Board(ABC):
     be defined in libpychess or Chess.coordinate. The former is a C++ implementation of the latter"""
 
     def __init__(self,
-                 starting_position: Tuple[List[Piece], List[Piece]] = None,
+                starting_position: Tuple[List[Piece], List[Piece]] = None,
                  to_move: int = WHITE,
                  can_castle: str = "KQkq",
                  en_passant_opts: str = "-",
@@ -34,8 +37,8 @@ class Board(ABC):
                  turn: int = 1,
                  ) -> None:
 
-
-        self.Position = self._get_position()
+        # Setup a logger
+        self.log = logging.getLogger("State")
 
         # Store the fen information given and piece representations
         # Construct a map of location: piece
@@ -59,7 +62,6 @@ class Board(ABC):
 
         # Create a history list
         self.history = list(self.to_fen())
-
 
     def __repr__(self) -> str:
         """__repr__.
@@ -94,10 +96,6 @@ class Board(ABC):
         return castling
 
     @abstractmethod
-    def _get_position(self):
-        pass
-
-    @abstractmethod
     def _psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         """Must be implemented by a subclass"""
         pass
@@ -125,13 +123,13 @@ class Board(ABC):
 
         if king in results:
             # Mark the king as captured
-            king.active = False
+            king.is_active = False
 
             # Calculate the moves for the enemy pieces without the king there
             opposing_moves = self._psuedolegal_moves(self.opposing)
 
             # Fix that
-            king.active = True
+            king.is_active = True
 
             # Filter out moves which are to spaces controlled attacks). Also
             # filter out captures of "defended" pieces which would result in the king being in check.
@@ -193,7 +191,7 @@ class Board(ABC):
         :param self:
         :rtype: King
         """
-        return [i for i in self.moving if isinstance(i, King)].pop()
+        return [i for i in self.moving if i.kind == "K"].pop()
 
     def __evaluate_check(self) -> List[Piece]:
         """__evaluate_check.
@@ -317,7 +315,7 @@ class Board(ABC):
             if rook not in self.loc_map:
                 continue
 
-            if not isinstance(self.loc_map[rook], Rook):
+            if self.loc_map[rook].kind != "R":
                 continue
 
             path = self.piece_map[king].path_to(rook)
@@ -349,7 +347,7 @@ class Board(ABC):
         """
 
         if mov.start not in self.loc_map:
-            log.error(f"{mov.start} does not appear as a piece in loc_map")
+            self.log.error(f"{mov.start} does not appear as a piece in loc_map")
             raise InvalidMoveError(f"{mov.start} does not appear as a piece in loc_map")
 
         # Set the new position

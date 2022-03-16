@@ -1,14 +1,18 @@
 from typing import List
 
 from Chess.constants import WHITE, MoveSignal, ResultKeys
-from Chess.coordinate import Position
-from Chess.pieces import King, Pawn, Piece
+from Chess.coordinate import PositionFactory
+from Chess.pieces import PieceFactory
 from Chess.result import Result, ResultSet
 from Chess.state import Board
 
+Position = PositionFactory().get_position()
+Piece = PieceFactory()["base"]
+King = PieceFactory()["K"]
+Pawn = PieceFactory()["P"]
 
 class PyBoard(Board):
-    def __py_allowed_move(self, position, piece) -> MoveSignal:
+    def _allowed_move(self, position, piece) -> MoveSignal:
         """__py_allowed_move.
 
         Calculates what the "type" of move which has been sent is.
@@ -85,7 +89,7 @@ class PyBoard(Board):
                     landed_on = Position((ni, nj))
                     # try: landed_on = self.piece_map[piece] + (dir * step)
                     # except InvalidFormat: break
-                    allowed = self.__py_allowed_move(landed_on, piece)
+                    allowed = self._allowed_move(landed_on, piece)
 
                     # Reordered expressions to make use of short-circuiting
                     if not pinned and allowed == MoveSignal.empty :

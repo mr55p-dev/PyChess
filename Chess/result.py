@@ -1,23 +1,20 @@
-"""I, Ellis Lunnon, have read and understood the School's Academic Integrity Policy, as well as guidance relating to this
-module, and confirm that this submission complies with the policy. The content of this file is my own original work,
-with any significant material copied or adapted from other sources clearly indicated and attributed."""
-
 from collections.abc import MutableMapping
 from typing import Any, Callable, Dict, Iterator, List, Optional
-from Chess.pieces import King, Piece
 from Chess.constants import ResultKeys
+from Chess.coordinate import PositionFactory
+from Chess.pieces import PieceFactory
 
-try:
-    from libpychess import Position
-except ImportError:
-    from Chess.coordinate import Position
+
+# Use factories to get the correct constants
+King = PieceFactory().get_piece("K")
+Piece = PieceFactory().get_piece("base")
+Position = PositionFactory().get_position
 
 
 class BaseResult(MutableMapping):
     """BaseResult
     Common class for Result and ResultSet. Defines the store and flatten methods
     """
-
     __slots__ = ('store')
 
     @staticmethod

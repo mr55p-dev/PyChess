@@ -1,16 +1,9 @@
-"""I, Ellis Lunnon, have read and understood the School's Academic Integrity Policy, as well as guidance relating to this
-module, and confirm that this submission complies with the policy. The content of this file is my own original work,
-with any significant material copied or adapted from other sources clearly indicated and attributed."""
-
 from typing import List
 from Chess.constants import PIECE_TYPES, WHITE, BLACK
-from Chess.coordinate import Vec
+from Chess.coordinate import Vec, PositionFactory
 from Chess.exceptions import InvalidPiece
 
-try:
-    from libpychess import Position
-except ImportError:
-    from Chess.coordinate import Position
+Position = PositionFactory().get_position()
 
 class Piece:
     """Piece
@@ -18,14 +11,6 @@ class Piece:
     for each type of piece to make construction a bit more smooth.
     Stores the projections, position, colour, move distance and activity of the piece.
     """
-
-    KING = "K"
-    QUEEN = "Q"
-    ROOK = "R"
-    BISHOP = "B"
-    KNIGHT = "N"
-    PAWN = "P"
-    
     def __init__(
             self,
             colour: bool,
@@ -90,15 +75,6 @@ class Piece:
     @property
     def kind(self) -> str:
         return self._kind
-
-    @property
-    def active(self) -> bool:
-        return self._is_active
-
-    @active.setter
-    def active(self, state: bool) -> None:
-        assert isinstance(state, bool)
-        self._is_active = state
 
     @property
     def distance(self) -> int:
@@ -225,3 +201,32 @@ class Pawn(Piece):
                 Vec(-1, -1),
                 Vec(-1, 1),
             ]
+
+
+class PieceFactory():
+    def __init__(self):
+        try:
+            from libpychess import pieces as c_Pieces
+            from libpychess import Piece as c_Piece
+            self.__piece_map = {
+                "base": c_Piece,
+                "K": c_Pieces.king,
+                "Q": c_Pieces.queen,
+                "R": c_Pieces.rook,
+                "B": c_Pieces.bishop,
+                "N": c_Pieces.knight,
+                "P": c_Pieces.pawn
+            }
+        except ImportError:
+            self.__piece_map = {
+                "base": Piece,
+                "K": King,
+                "Q": Queen,
+                "R": Rook,
+                "B": Bishop,
+                "N": Knight,
+                "P": Pawn
+            }
+
+    def get_piece(self, key: str):
+        return self.__piece_map[key]

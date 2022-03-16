@@ -1,20 +1,10 @@
-"""I, Ellis Lunnon, have read and understood the School's Academic Integrity Policy, as well as guidance relating to this
-module, and confirm that this submission complies with the policy. The content of this file is my own original work,
-with any significant material copied or adapted from other sources clearly indicated and attributed."""
-
 import re
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 from Chess.state import Board
-from Chess.coordinate import Move
-from Chess.exceptions import MoveParseError
+from Chess.coordinate import Move, PositionFactory
 import logging, logging.handlers
 
-try: 
-    from libpychess import Position
-except ImportError: 
-    from Chess.coordinate import Position
-
-log = logging.getLogger("Game")
+Position = PositionFactory().get_position()
 
 class Game():
     """Game
@@ -25,6 +15,7 @@ class Game():
                  view_callback: Optional[Callable] = None,
                  start_state: Board = None
                  ) -> None:
+        self.log = logging.getLogger("Game")
         self.__state: Optional[Board] = None
         self.__view_callback = view_callback
 
@@ -58,7 +49,7 @@ class Game():
         elif castle_type == "short":
             long = False
         else:
-            log.error(f"Failed to parse castle '{castle_type}': Matched for a castle but with no group contents")
+            self.log.error(f"Failed to parse castle '{castle_type}': Matched for a castle but with no group contents")
             raise ValueError("Matched for a castle but with no group contents")
 
         if self.peek.to_move:
@@ -97,8 +88,8 @@ class Game():
         matches = re.findall(pattern, move_str)
 
         if not matches:
-            log.error(f"Failed to parse {move_str}: no regex match on this string")
-            log.debug(f"Failed at state: {self.peek.to_fen()}")
+            self.log.error(f"Failed to parse {move_str}: no regex match on this string")
+            self.log.debug(f"Failed at state: {self.peek.to_fen()}")
 
         move_repr = matches.pop()
 
@@ -112,8 +103,8 @@ class Game():
             takes = True
 
         if not move_repr[3]:
-            log.error(f"Failed to parse {move_str}: no destination square provided")
-            log.debug(f"Failed at state: {self.peek.to_fen()}")
+            self.log.error(f"Failed to parse {move_str}: no destination square provided")
+            self.log.debug(f"Failed at state: {self.peek.to_fen()}")
             return None
         end = Position(move_repr[3].upper())
 
@@ -132,8 +123,8 @@ class Game():
             piece_candidates = [p for p in init_piece_candidates if p.kind == piece]
 
             if not piece_candidates:
-                log.error(f"Failed to parse {move_str}: no candidate pieces found.")
-                log.debug(f"Failed at state: {self.peek.to_fen()}")
+                self.log.error(f"Failed to parse {move_str}: no candidate pieces found.")
+                self.log.debug(f"Failed at state: {self.peek.to_fen()}")
                 return None
             elif len(piece_candidates) > 1:
                 # Hacky way to check the pieces are in the same file
@@ -142,8 +133,8 @@ class Game():
                               if str(self.peek.piece_map[i])[0] == start.upper()
                             ]
                 if len(piece_candidates) != 1:
-                    log.warn(f"Failed to parse {move_str}: multiple candidate pieces found.")
-                    log.debug(f"Failed at state: {self.peek.to_fen()}")
+                    self.log.warn(f"Failed to parse {move_str}: multiple candidate pieces found.")
+                    self.log.debug(f"Failed at state: {self.peek.to_fen()}")
                     return None
             start = self.peek.piece_map[piece_candidates.pop()]
 

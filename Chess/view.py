@@ -48,7 +48,7 @@ def view_board_mono(board: Board, show_moves: List[Piece] = None):
                 representation[pas.i][pas.j] = " o "
 
     print(f"{'White' if board.to_move else 'Black'} to move - turn {board.turn}")
-    print("\n".join(["".join([cell for cell in row]) for row in representation[::-1]]))
+    print("\n".join(["".join(list(row)) for row in representation[::-1]]))
     print(f"{'STALE' if board.is_stale else ''}{'CHECK' if board.is_check else ''}{'MATE' if board.is_mate else ''}")
 
 def view_board_colour(board: Board, show_moves=None):
@@ -66,7 +66,7 @@ def view_board_colour(board: Board, show_moves=None):
                 representation[cap.i][cap.j] = " x "
             for pas in moves[piece][ResultKeys.passive]:
                 representation[pas.i][pas.j] = " o "
-        
+
     for i_ind, i in enumerate(representation):
         for j_ind, _ in enumerate(i):
             square = representation[i_ind][j_ind]
@@ -77,5 +77,5 @@ def view_board_colour(board: Board, show_moves=None):
             count += 1
 
     print(f"{'White' if board.to_move else 'Black'} to move - turn {board.turn}")
-    print("\n".join(["".join([cell for cell in row]) for row in representation[::-1]]))
+    print("\n".join(["".join(list(row)) for row in representation[::-1]]))
     print(f"{'STALE' if board.is_stale else ''}{'CHECK' if board.is_check else ''}{'MATE' if board.is_mate else ''}")

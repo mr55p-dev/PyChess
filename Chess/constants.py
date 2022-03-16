@@ -1,16 +1,23 @@
-"""I, Ellis Lunnon, have read and understood the School's Academic Integrity Policy, as well as guidance relating to this
-module, and confirm that this submission complies with the policy. The content of this file is my own original work,
-with any significant material copied or adapted from other sources clearly indicated and attributed."""
-
-# Use the C++ back end for calculating psuedolegal moves (~3x faster for batch calculation)
 from typing import Iterator
 
 
-USE_CPP = True
-
 # Define the values for piece/player colours
-WHITE = True
-BLACK = False
+
+ALLOW_CPP = False
+
+class colourFactory():
+    def __init__(self):
+        try:
+            from libpychess import white, black
+            self.white = white
+            self.black = black
+        except ImportError:
+            self.white = True
+            self.black = False
+
+cf = colourFactory()
+WHITE = cf.white
+BLACK = cf.black
 
 # Valid piece identifiers, used in helpers to quickly mock
 # piece instantiation

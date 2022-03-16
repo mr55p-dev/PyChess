@@ -5,7 +5,6 @@ with any significant material copied or adapted from other sources clearly indic
 from itertools import repeat
 from typing import List, Tuple, Union
 import math
-import Chess.constants as cons
 
 class Vec:
     """Vec: lightweight vector class implementation
@@ -91,7 +90,7 @@ class Position:
     _TYPE_CAR = Tuple[int, int]
     _TYPE_INI = Union[str, Tuple[int, int]]
 
-    def __init__(self, pos: _TYPE_INI) -> None:
+    def __init__(self, *args) -> None:
         """__init__.
 
         :param self:
@@ -99,17 +98,20 @@ class Position:
         :type pos: (int, int) | str[2]
         :rtype: None
         """
-        if isinstance(pos, str):
-            self._from_algebraic(pos)
+        assert len(args) in {1, 2}
+        if len(args) == 1:
+            print(args)
+            self._from_algebraic(args[0])
         else:
-            self._from_grid(pos)
+            self._from_grid(args)
 
     def _from_algebraic(self, pos: _TYPE_ALG) -> None:
-        # file 0  A   65
-        #      1  B   66
-        #      2  C   67
-        #      ...
-        #      7  H   72
+        # file 0   A   65
+        #      1   B   66
+        #      2   C   67
+        #      ... ... ...
+        #      7   H   72
+        print(pos)
         self.i = int(pos[1]) - 1
         self.j = ord(pos[0]) - 65 # Using ASCII character codes to revert capital letters back to numbers.
 
@@ -136,9 +138,6 @@ class Position:
 
     def __eq__(self, o) -> bool:
         """Support testing equality between two instances of this class"""
-        # if isinstance(o, Position): return self.algebraic == o.algebraic
-        # Optimisation for the purpose of data generation - might remove since calling__hash__ 
-        # directly feels almost wrong...
         return self.__hash__() == o.__hash__()
 
     def __ne__(self, o: 'Position') -> bool:
@@ -148,11 +147,11 @@ class Position:
     
     def __add__(self, o: Vec) -> 'Position':
         """Support addition by a vector Vec"""
-        return Position((self.i + o.i, self.j + o.j))
+        return Position(self.i + o.i, self.j + o.j)
 
     def __sub__(self, o: Union[Vec, 'Position']) -> 'Position':
         """Support subtraction by a vector Vec"""
-        return Position((self.i - o.i, self.j - o.j))
+        return Position(self.i - o.i, self.j - o.j)
 
     def path_to(self, to: 'Position') -> List['Position']:
         """path_to.
@@ -172,13 +171,13 @@ class Position:
         rj = range(self.j, to.j, sign(dj))
         # If there is a straight or diagonal path between the pieces then give that
         if len(ri) == len(rj):
-            return [Position((i, j)) for i, j in zip(ri, rj)]
+            return [Position(i, j) for i, j in zip(ri, rj)]
         elif len(ri) == 0:
-            return [Position((i, j)) for i, j in zip(repeat(self.i), rj)]
+            return [Position(i, j) for i, j in zip(repeat(self.i), rj)]
         elif len(rj) == 0:
-            return [Position((i, j)) for i, j in zip(ri, repeat(self.j))]
+            return [Position(i, j) for i, j in zip(ri, repeat(self.j))]
         # Else just give the original location (used for the path of knights)
-        else: return [Position((self.i, self.j))]
+        else: return [Position(self.i, self.j)]
 
     def __hash__(self) -> int:
         """__hash__.
@@ -199,8 +198,6 @@ class Position:
         """
         return f"{chr(self.j + 65)}{chr(self.i + 49)}"
 
-
-
 class Move():
     """Move wrapper class.
     Simple class to wrap properties required to execute a move and define an API for
@@ -208,7 +205,7 @@ class Move():
     __slots__ = ('__start', '__end', '__takes', '__is_castle')
 
     def __init__(self, 
-                 start: Position, 
+                 start: Position,
                  end: Position, 
                  takes: bool,
                  castle: str = ''                
@@ -245,3 +242,26 @@ class Move():
     @property
     def is_castle(self) -> str:
         return self.__is_castle
+
+
+class VecFactory():
+    def __init__(self):
+        try:
+            from libpychess import Vector
+            self.vec = Vector
+        except ImportError:
+            self.vec = Vec
+
+    def get_vec(self):
+        return self.vec
+
+class PositionFactory():
+    def __init__(self):
+        try:
+            from libpychess import Position as c_Position
+            self.position: Position = c_Position
+        except ImportError:
+            self.position = Position
+
+    def get_position(self) -> Position:
+        return self.position
