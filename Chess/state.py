@@ -3,7 +3,7 @@ module, and confirm that this submission complies with the policy. The content o
 with any significant material copied or adapted from other sources clearly indicated and attributed."""
 
 import logging
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple
 
 from Chess.constants import BLACK, WHITE, WinState
@@ -15,7 +15,7 @@ from Chess.result import ResultKeys, ResultSet
 
 log = logging.getLogger("State")
 
-class Board():
+class Board(ABC):
     """Board.
     This wraps a games state and provides utilities for interacting with it and calculating
     the moves which are available in the position. It can also execute moves on the current
@@ -34,6 +34,8 @@ class Board():
                  turn: int = 1,
                  ) -> None:
 
+
+        self.Position = self._get_position()
 
         # Store the fen information given and piece representations
         # Construct a map of location: piece
@@ -92,7 +94,11 @@ class Board():
         return castling
 
     @abstractmethod
-    def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
+    def _get_position(self):
+        pass
+
+    @abstractmethod
+    def _psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         """Must be implemented by a subclass"""
         pass
 
@@ -122,7 +128,7 @@ class Board():
             king.active = False
 
             # Calculate the moves for the enemy pieces without the king there
-            opposing_moves = self.__psuedolegal_moves(self.opposing)
+            opposing_moves = self._psuedolegal_moves(self.opposing)
 
             # Fix that
             king.active = True
@@ -137,7 +143,7 @@ class Board():
             attacker = attackers.pop()
             assert attacker
 
-        opposing_moves = self.__psuedolegal_moves(self.opposing)
+        opposing_moves = self._psuedolegal_moves(self.opposing)
         for piece in results.keys():
             # If there is only one attacker, non-king pieces can only move on the path attacker - king
             # If the piece is a king then fetch the king_moves from __filter_king_moves algorithm
@@ -174,7 +180,7 @@ class Board():
         :rtype: None
         """
 
-        if isinstance(new_position, Position):
+        if isinstance(new_position, self.Position):
             # Change this to just update the map in the future.
             piece._position = new_position
         if isinstance(is_active, bool):
@@ -197,7 +203,7 @@ class Board():
         :param self:
         :rtype: List[Piece]
         """
-        moves = self.__psuedolegal_moves(self.opposing)
+        moves = self._psuedolegal_moves(self.opposing)
         king = self.__get_king()
 
         king_loc = self.piece_map[king]
@@ -232,7 +238,7 @@ class Board():
         # passed which also exist in the moving side.
         pieces = self.moving if not pieces else [i for i in pieces if i in self.moving]
         # Get psuedolegal moves for allied pieces
-        psl = self.__psuedolegal_moves(pieces)
+        psl = self._psuedolegal_moves(pieces)
 
         # Filter the moves 
         results = self.__filter_moves(psl)
@@ -319,7 +325,7 @@ class Board():
             if [i for i in path if i in self.loc_map]:
                 continue
 
-            enemy_moves = self.__psuedolegal_moves(self.opposing)
+            enemy_moves = self._psuedolegal_moves(self.opposing)
             if [i for i in path if i in enemy_moves.all_valid + enemy_moves.all_attack]:
                 continue
 

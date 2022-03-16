@@ -1,0 +1,12 @@
+{
+    "python.autoComplete.extraPaths": [
+        "vendor/pychessbinds/build",
+        "/Users/ellis/Git/PyChess/vendor/pychessbinds/build",
+        "/Users/ellis/Git/PyChess/vendor/pychessbinds/build-release"
+    ],
+    "python.analysis.extraPaths": [
+        "vendor/pychessbinds/build",
+        "/Users/ellis/Git/PyChess/vendor/pychessbinds/build",
+        "/Users/ellis/Git/PyChess/vendor/pychessbinds/build-release"
+    ]
+}

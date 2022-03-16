@@ -1,5 +1,6 @@
 from copy import copy
 from typing import List, Tuple
+from Chess.helpers import pieces_from_fen
 
 import libpychess.pieces as c_pieces
 from libpychess import MoveAnalyser
@@ -12,7 +13,6 @@ from Chess.state import Board
 from Chess.coordinate import Position as py_Position
 from Chess.coordinate import Move
 from Chess.exceptions import InvalidMoveError
-
 
 class CBoard(Board):
     def __init__(self,
@@ -42,7 +42,10 @@ class CBoard(Board):
         }
         super().__init__(starting_position, to_move, can_castle, en_passant_opts, half_moves_since_pawn, turn)
 
-    def __psuedolegal_moves(self, pieces: List[py_pieces.Piece]) -> ResultSet:
+    def _get_position(self):
+        return c_Position
+
+    def _psuedolegal_moves(self, pieces: List[py_pieces.Piece]) -> ResultSet:
         """__psuedolegal_moves.
         Wraps function calls to convert and retrieve data from the libpychess module.
 
@@ -72,18 +75,21 @@ class CBoard(Board):
         # the list and so we might need to define a callback from that function
         # to reinstantiate our analyser object each time - or could try some funkier stuff...
         c_result = analysis.PsuedolegalMoves(pieces[0].colour)
+
         return ResultSet(
             {
                 self._py_cpp_conv[k.kind](
-                    k.colour, py_Position(k.position.i, k.position.j)
+                    k.colour, c_Position(k.position.i, k.position.j)
                 ): Result(v)
                 for k, v in c_result.items()
             }
         )
 
-    def move(self, mov: Move) -> 'Board':
-        if mov.start not in self.loc_map:
-            raise InvalidMoveError(f"No piece listed at {mov.start}.")
+def construct_board(fen):
+    """construct_board.
+    Used to mock a board from a FEN string.
 
-        moving_piece = self.loc_map[mov.start]
-        updated_piece = copy(moving_piece)
+    :param fen:
+    """
+    params = pieces_from_fen(fen)
+    return CBoard(*params)
