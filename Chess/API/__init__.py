@@ -1,17 +1,20 @@
+from Chess import types
+
 class BaseChess():
     def __init__(self, use_acceleration: bool):
-
         self.accelerated = use_acceleration
         if use_acceleration:
-            from libpychess import Position, pieces
-
+            from libpychess import Position, pieces, Vec, BLACK, WHITE
         else:
-            from Chess.coordinate import Position
+            from Chess.coordinate import Position, Vec
+            from Chess.constants import BLACK, WHITE
             from Chess import pieces
 
-        self.Position = Position
+        self.Position: types.Position  = Position
+        self.Vec: types.Vec = Vec
         self.Pieces = pieces
-
+        self.black = BLACK
+        self.white = WHITE
 
 
 class Chess(BaseChess):

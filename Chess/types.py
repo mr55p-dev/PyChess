@@ -9,6 +9,8 @@ class Vec(ABC):
         ...
 
 class Position(ABC):
+    __slots__ = ('i', 'j')
+
     @abstractmethod
     def __init__(self, *args: Union[Tuple[str], Tuple[int, int]]):
         ...
