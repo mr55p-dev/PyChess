@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple, Union
+from math import ceil
 
 from Chess.constants import WinState, BLACK, WHITE, ResultKeys
 from Chess.coordinate import Move
@@ -25,7 +26,7 @@ class Board(ABC):
                  to_move: int = WHITE,
                  can_castle: str = "KQkq",
                  en_passant_opts: str = "-",
-                 half_moves_since_pawn: int = 0,
+                 half_turn: int = 0,
                  turn: int = 1,
                  ) -> None:
         # Setup a logger
@@ -35,6 +36,7 @@ class Board(ABC):
         # Construct a map of location: piece
         self._white, self._black = starting_position or self.new_game()
         self._turn = turn
+        self._half_turn = half_turn
 
         # Define convenient variables so we know which pieces are moving
         self.to_move = to_move
@@ -365,16 +367,20 @@ class Board(ABC):
                 self._castle[2] = False
                 self._castle[3] = False
 
-        # Remove captured pieces so they dont remain forever.
-        if mov.takes:
-            captured = self.loc_map[mov.end]
-            self.__update_piece(captured, is_active=False)
-
         if self.to_move:
             self.to_move = BLACK
         else:
             self.to_move = WHITE
             self._turn = self._turn + 1
+
+        self._half_turn = self._half_turn + 1
+
+        # Remove captured pieces so they dont remain forever.
+        if mov.takes:
+            captured = self.loc_map[mov.end]
+            self.__update_piece(captured, is_active=False)
+            if captured.kind == "P":
+                self._half_turn = 0
 
         self.calculate()
 
@@ -430,7 +436,7 @@ class Board(ABC):
         # Since i am not ready to finish FEN we will add default data to the end
         fields.append(can_castle) # Right to castle
         fields.append("-") # En-passant right
-        fields.append(str(0)) # Half move clock ish...
+        fields.append(str(self._half_turn)) # Half move clock ish...
         fields.append(str(self._turn)) # Full move clock
         return " ".join(fields)
 
