@@ -1,17 +1,22 @@
-from typing import List
+from typing import List, Tuple
+from Chess import types
 
 from Chess.constants import WHITE, MoveSignal, ResultKeys
-from Chess.coordinate import PositionFactory
-from Chess.pieces import PieceFactory
+from Chess.coordinate import Position
+from Chess.helpers import NewGame
 from Chess.result import Result, ResultSet
 from Chess.state import Board
 
-Position = PositionFactory().get_position()
-Piece = PieceFactory()["base"]
-King = PieceFactory()["K"]
-Pawn = PieceFactory()["P"]
-
 class PyBoard(Board):
+    def __init__(self, fen: str = None) -> None:
+        self.Position: types.Position = Position
+        ng = NewGame(False)
+        self.new_game = ng.new_game
+        params = ng.pieces_from_fen(fen) if fen else []
+
+        super().__init__(*params)
+
+
     def _allowed_move(self, position, piece) -> MoveSignal:
         """__py_allowed_move.
 
@@ -51,13 +56,13 @@ class PyBoard(Board):
         elif occupier.colour == piece.colour:
             if capture_allowed: return MoveSignal.blocked
         elif capture_allowed:
-            if isinstance(occupier, King):
+            if occupier.kind == "K":
                 return MoveSignal.checking_attack
             else:
                 return MoveSignal.capture
         return MoveSignal.disallowed
 
-    def __psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
+    def _psuedolegal_moves(self, pieces: List[types.Piece]) -> ResultSet:
         """__py_psuedolegal_moves.
         Calculates the moves each piece could make if not constrained by checks, etc.
         This is designed to separate move calculation out into a two step process, to
@@ -86,7 +91,7 @@ class PyBoard(Board):
                     ni = loc.i + (dir.i * step)
                     nj = loc.j + (dir.j * step)
                     if ni > 7 or ni < 0 or nj > 7 or nj < 0: break
-                    landed_on = Position((ni, nj))
+                    landed_on = Position(ni, nj)
                     # try: landed_on = self.piece_map[piece] + (dir * step)
                     # except InvalidFormat: break
                     allowed = self._allowed_move(landed_on, piece)
@@ -96,7 +101,7 @@ class PyBoard(Board):
                         # Do not store this location if we are searching for a pin
                         # Store this location as a passive, and an attack for pieces which are
                         # not pawns
-                        if not isinstance(piece, Pawn):
+                        if piece.kind != "P":
                             result[ResultKeys.attack].append(landed_on)
                         result[ResultKeys.passive].append(landed_on)
                     elif not pinned and allowed == MoveSignal.capture:
@@ -108,7 +113,7 @@ class PyBoard(Board):
                         result[ResultKeys.attack].append(landed_on)
                         # Snapshot the current location and check if this piece which can
                         # be captures is pinned to the king.
-                        pinned = Position((landed_on.i, landed_on.j))
+                        pinned = Position(landed_on.i, landed_on.j)
                     elif not pinned and allowed == MoveSignal.attacks:
                         # Do not save an attack if we are scanning for a pin
                         # This will only ever be pawn attacks (to separate their passive

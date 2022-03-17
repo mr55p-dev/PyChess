@@ -1,21 +1,12 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
-from Chess.constants import WinState, BLACK, WHITE
-from Chess.coordinate import Move, PositionFactory
-from Chess.exceptions import InvalidCastleType, InvalidMoveError
-from Chess.helpers import pieces_from_fen, new_game
-from Chess.pieces import PieceFactory
-from Chess.result import ResultKeys, ResultSet
-
-# Get the correct pieces for this run
-Piece = PieceFactory().get_piece("base")
-King = PieceFactory().get_piece("K")
-Rook = PieceFactory().get_piece("R")
-
-# Get the correct position object
-Position = PositionFactory().get_position()
+from Chess.constants import WinState, BLACK, WHITE, ResultKeys
+from Chess.coordinate import Move
+from Chess.exceptions import InvalidMoveError
+from Chess.result import ResultSet
+from Chess.types import Piece, Position
 
 
 class Board(ABC):
@@ -25,28 +16,28 @@ class Board(ABC):
     state which performs internal mainpulation rather than copying, since instantiating
     this object is kind of slow...
 
-    USE_CPP controls if the function to evaluate the "psuedolegal" moves in a position should
-    be defined in libpychess or Chess.coordinate. The former is a C++ implementation of the latter"""
+    Subclasses must implement _psuedolegal_moves and override the __init__ method to include a
+    Position parmeter, since i am too lazy to duplicate the logic in get_king_start et al.
+    """
 
     def __init__(self,
-                starting_position: Tuple[List[Piece], List[Piece]] = None,
+                 starting_position: Tuple[List[Piece], List[Piece]] = None,
                  to_move: int = WHITE,
                  can_castle: str = "KQkq",
                  en_passant_opts: str = "-",
                  half_moves_since_pawn: int = 0,
                  turn: int = 1,
                  ) -> None:
-
         # Setup a logger
         self.log = logging.getLogger("State")
 
         # Store the fen information given and piece representations
         # Construct a map of location: piece
-        self._white, self._black = starting_position or new_game()
+        self._white, self._black = starting_position or self.new_game()
         self._turn = turn
 
         # Define convenient variables so we know which pieces are moving
-        self._to_move = to_move
+        self.to_move = to_move
         self._opposition = WHITE if to_move == BLACK else BLACK
 
         # Setup properties which we will later bind in the `calculate` function
@@ -98,7 +89,7 @@ class Board(ABC):
     @abstractmethod
     def _psuedolegal_moves(self, pieces: List[Piece]) -> ResultSet:
         """Must be implemented by a subclass"""
-        pass
+        ...
 
     def __filter_moves(self, results: ResultSet) -> ResultSet:
         """__filter_moves.
@@ -164,7 +155,7 @@ class Board(ABC):
 
     def __update_piece(self,
                        piece: Piece,
-                       new_position = None,
+                       new_position: Position = None,
                        is_active = None
                        ) -> None:
         """__update_piece.
@@ -173,18 +164,16 @@ class Board(ABC):
         :param self:
         :param piece:
         :type piece: Piece
-        :param new_position:
         :param is_active:
         :rtype: None
         """
 
-        if isinstance(new_position, self.Position):
-            # Change this to just update the map in the future.
+        if new_position:
             piece._position = new_position
-        if isinstance(is_active, bool):
+        if is_active:
             piece.is_active = is_active
 
-    def __get_king(self) -> King:
+    def __get_king(self) -> Piece:
         """__get_king.
         Returns the kind of the side moving this turn
 
@@ -230,7 +219,6 @@ class Board(ABC):
         :param self:
         :param pieces: List of pieces to calculate on
         :type pieces: list[Piece]
-        :rtype: ResultSet
         """
         # Either use all the moving pieces, or the list of pieces
         # passed which also exist in the moving side.
@@ -267,6 +255,23 @@ class Board(ABC):
 
         self.__win_state = self.__evaluate_mate()
 
+    def get_king_start(self, colour: Union[int, bool]) -> Position:
+        return self.Position("E1") if colour else self.Position("E8")
+
+    def get_rook_start(self, colour) -> Tuple[Position, Position]:
+        return (
+            self.Position("H1"),
+            self.Position("A1")
+            ) if colour else (
+                self.Position("H8"),
+                self.Position("A8")
+            )
+
+    def get_castled_rook(self, colour, type: str) -> Position:
+        rank = 0 if colour else 7
+        file = 3 if type == "long" else 5
+        return self.Position(rank, file)
+
     def valid_castle(self) -> List[Position]:
         """valid_castle.
         Gets the positions which would need to be entered for a valid castling move to be executed.
@@ -276,22 +281,15 @@ class Board(ABC):
         :param self:
         :rtype: List[Position]
         """
-        if self._to_move:
+        king_start = self.get_king_start(self.to_move)
+        rook_short, rook_long = self.get_rook_start(self.to_move)
+
+        if self.to_move:
             castle_short = self._castle[0]
             castle_long  = self._castle[1]
-
-            king_start = Position("E1")
-
-            rook_short = Position("H1")
-            rook_long  = Position("A1")
         else:
             castle_short = self._castle[2]
             castle_long  = self._castle[3]
-
-            king_start = Position("E8")
-
-            rook_short = Position("H8")
-            rook_long  = Position("A8")
 
         if not (castle_short or castle_long):
             return []
@@ -331,15 +329,13 @@ class Board(ABC):
             final[1] += -2 if rook.j == 0 else 2
             final = (final[0], final[1])
 
-            valid.append(Position(final))
+            valid.append(self.Position(final))
 
         return valid
 
     def move(self, mov: Move) -> 'Board':
         """Runs a move in the current state. Takes a `Move` object.
-        This method does NOT implement full validity checks. Raises `InvalidStateChange` exception.
-        Reupdates the state at the end of the call, and may return None. Still an active work in 
-        progress.
+        Reupdates the state at the end of the call.
 
         :param self:
         :param mov:
@@ -356,23 +352,13 @@ class Board(ABC):
 
         # Check if the move is a castle
         if mov.is_castle:
-            # Validate if the castle is allowed
-            rook_i = mov.start.i
-            # Set long or short castle
-            if mov.is_castle == "short":
-                rook_j = 7
-                rook_end_j = 5
-            elif mov.is_castle == "long":
-                rook_j = 0
-                rook_end_j = 3
-            else:
-                raise InvalidCastleType()
-
-            rook = self.loc_map[Position((rook_i, rook_j))]
-            rook_end = Position((rook_i, rook_end_j))
+            # Get the location of the rook
+            rook_start = self.get_rook_start(self.to_move)[0 if mov.is_castle == "short" else 1]
+            rook = self.loc_map[rook_start] # Get the rook object at that position
+            rook_end = self.get_castled_rook(self.to_move, mov.is_castle) # Get the end position
             self.__update_piece(rook, rook_end)
 
-            if self._to_move:
+            if self.to_move: # Disallow future castling
                 self._castle[0] = False
                 self._castle[1] = False
             else:
@@ -384,10 +370,10 @@ class Board(ABC):
             captured = self.loc_map[mov.end]
             self.__update_piece(captured, is_active=False)
 
-        if self._to_move:
-            self._to_move = BLACK
+        if self.to_move:
+            self.to_move = BLACK
         else:
-            self._to_move = WHITE
+            self.to_move = WHITE
             self._turn = self._turn + 1
 
         self.calculate()
@@ -432,7 +418,7 @@ class Board(ABC):
         
         fields.append("/".join(irreducable_ranks))
         
-        next_move = "w" if self._to_move == WHITE else 'b'
+        next_move = "w" if self.to_move == WHITE else 'b'
         fields.append(next_move)
 
         castle_rep = ["K", "Q", "k", "q"]
@@ -493,7 +479,7 @@ class Board(ABC):
         :rtype: Dict[Position, Piece]
         """
         return self.__loc_map
-    
+
     @property
     def piece_map(self) -> Dict[Piece, Position]:
         """piece_map.
@@ -536,6 +522,11 @@ class Board(ABC):
         """
         return self._to_move
 
+    @to_move.setter
+    def to_move(self, player) -> None:
+        self._to_move = player
+
+
     @property
     def moves(self) -> ResultSet:
         """moves.
@@ -545,13 +536,3 @@ class Board(ABC):
         :rtype: ResultSet
         """
         return self._allowed_moves
-
-def construct_board(fen):
-    """construct_board.
-    Used to mock a board from a FEN string.
-
-    :param fen:
-    """
-    params = pieces_from_fen(fen)
-    return Board(*params)
-

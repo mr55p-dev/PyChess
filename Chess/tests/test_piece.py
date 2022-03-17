@@ -4,28 +4,29 @@ from Chess.pieces import Piece, King, Queen, Knight, Rook, Bishop, Pawn
 
 
 def test_init():
-    p = Piece(WHITE, Position("A1"), 'K', 7, is_active = True)
+    p = Piece(WHITE, Position("A1"), 'K', 7)
 
 def test_eq():
-    p = Piece(WHITE, Position("A1"), 'K', 7, is_active = True)
-    r = Piece(WHITE, Position("A1"), 'K', 7, is_active = True)
+    p = Piece(WHITE, Position("A1"), 'K', 7)
+    r = Piece(WHITE, Position("A1"), 'K', 7)
     assert p == r
 
 def test_neq():
-    p = Piece(WHITE, Position("A1"), 'K', 7, is_active = True)
-    r = Piece(BLACK, Position("A1"), 'K', 7, is_active = True)
-    s = Piece(BLACK, Position("B1"), 'K', 7, is_active = True)
-    t = Piece(BLACK, Position("B1"), 'N', 7, is_active = True)
-    u = Piece(BLACK, Position("B1"), 'N', 7, is_active = False)
+    p = Piece(WHITE, Position("A1"), 'K', 7)
+    r = Piece(BLACK, Position("A1"), 'K', 7)
+    s = Piece(BLACK, Position("B1"), 'K', 7)
+    t = Piece(BLACK, Position("B1"), 'N', 7)
+    u = Piece(BLACK, Position("B1"), 'N', 7)
+    u.is_active = False
     assert p != r != s != t != u
 
 def test_hash():
-    p = Piece(WHITE, Position("B7"), 'K', 7, is_active = True)
+    p = Piece(WHITE, Position("B7"), 'K', 7)
     # 111 001 1001011 1 1
     assert hash(p) == int(0b110001100101111)
 
 def test_active():
-    p = Piece(WHITE, Position("B7"), 'K', 7, is_active = True)
+    p = Piece(WHITE, Position("B7"), 'K', 7)
     assert p.is_active == True
     p.is_active = False
     assert p.is_active == False

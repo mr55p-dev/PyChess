@@ -60,16 +60,15 @@ class Game():
             end_i = 7
 
         if long:
-            start_j = 4
             end_j = 2
             castles = 'long'
         else:
-            start_j = 4
             end_j = 6
             castles = 'short'
 
-        start = Position((start_i, start_j))
-        end = Position((end_i, end_j))
+        start_j = 4
+        start = Position(start_i, start_j)
+        end = Position(end_i, end_j)
         takes = False
 
         return Move(start, end, takes, castles)

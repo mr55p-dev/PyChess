@@ -1,6 +1,6 @@
 import pytest
-from Chess.cState import construct_board
-from Chess.cState import CBoard as Board
+# from Chess.cState import CBoard as Board
+from Chess.pState import PyBoard as Board
 
 fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
@@ -21,7 +21,7 @@ fen_seq = [
 # These tests still fail as half move clock and en-passant not working
 @pytest.mark.parametrize('fen', fen_seq)
 def test_construct(fen):
-    board = construct_board(fen)
+    board = Board(fen)
     assert board.to_fen() == fen
 
 def test_calculate():

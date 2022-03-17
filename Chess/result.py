@@ -1,14 +1,8 @@
 from collections.abc import MutableMapping
 from typing import Any, Callable, Dict, Iterator, List, Optional
+
 from Chess.constants import ResultKeys
-from Chess.coordinate import PositionFactory
-from Chess.pieces import PieceFactory
-
-
-# Use factories to get the correct constants
-King = PieceFactory().get_piece("K")
-Piece = PieceFactory().get_piece("base")
-Position = PositionFactory().get_position
+from Chess.types import Position, Piece
 
 
 class BaseResult(MutableMapping):
@@ -40,6 +34,7 @@ class Result(BaseResult):
     _VT = List[Position]
 
     def __init__(self, res: Dict[_KT, _VT] = {}) -> None:
+        # sourcery skip: default-mutable-arg
         """__init__
         Default constructor for a Result object.
 
@@ -130,10 +125,7 @@ class Result(BaseResult):
         :param self:
         :rtype: bool
         """
-        for k in self.store:
-            if self.store[k]:
-                return True
-        return False
+        return any(self.store[k] for k in self.store)
 
     @property
     def has_valid(self) -> bool:
@@ -143,9 +135,7 @@ class Result(BaseResult):
         :param self:
         :rtype: bool
         """
-        if self.store[ResultKeys.capture] or self.store[ResultKeys.passive]:
-            return True
-        return False
+        return bool(self.store[ResultKeys.capture] or self.store[ResultKeys.passive])
 
 class ResultSet(BaseResult):
     """ResultSet
@@ -156,6 +146,7 @@ class ResultSet(BaseResult):
     _VT = Result
 
     def __init__(self, mapping: Dict[_KT, _VT] = {}) -> None:
+        # sourcery skip: default-mutable-arg
         """__init__.
 
         :param self:
@@ -251,7 +242,7 @@ class ResultSet(BaseResult):
         :rtype: Result
         """
         for k in self.store:
-            if isinstance(k, King):
+            if k.kind == "K":
                 return self.store[k]
         raise IndexError("There is no king in this result set")
 
@@ -264,10 +255,14 @@ class ResultSet(BaseResult):
         :type pin_loc: Position
         :rtype: Optional[Piece]
         """
-        for piece in self.store:
-            if pin_loc in self.store[piece][ResultKeys.pin]:
-                return piece
-        return None
+        return next(
+            (
+                piece
+                for piece in self.store
+                if pin_loc in self.store[piece][ResultKeys.pin]
+            ),
+            None,
+        )
 
     def filter_by_move_type(self, key: ResultKeys , test: Callable) -> 'ResultSet':
         """filter_by_move_type.

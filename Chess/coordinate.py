@@ -5,8 +5,9 @@ with any significant material copied or adapted from other sources clearly indic
 from itertools import repeat
 from typing import List, Tuple, Union
 import math
+from Chess import types
 
-class Vec:
+class Vec(types.Vec):
     """Vec: lightweight vector class implementation
     Used throught the program specifically to manipulate Position objects 
     (a piece's position can be projected along a vector through scalar multiplicaiton).
@@ -39,7 +40,7 @@ class Vec:
         :param o:
         :type o: Position | Vec
         :rtype: bool
-        
+
         Equality checking only supports objects which implement i and j attributes (Vec, Position).
         """
         return self.i == o.i and self.j == o.j
@@ -72,7 +73,7 @@ class Vec:
         """
         return Vec(self.i * scalar, self.j * scalar)
 
-class Position:
+class Position(types.Position):
     """Position
     Wrapper for a board position. Also implemeted in C++ for speed.
     Uses __slots__ for preallocation of attributes so does not support
@@ -198,7 +199,7 @@ class Position:
         """
         return f"{chr(self.j + 65)}{chr(self.i + 49)}"
 
-class Move():
+class Move(types.Move):
     """Move wrapper class.
     Simple class to wrap properties required to execute a move and define an API for
     view functions to use to interact with Board and Game."""
@@ -242,26 +243,3 @@ class Move():
     @property
     def is_castle(self) -> str:
         return self.__is_castle
-
-
-class VecFactory():
-    def __init__(self):
-        try:
-            from libpychess import Vector
-            self.vec = Vector
-        except ImportError:
-            self.vec = Vec
-
-    def get_vec(self):
-        return self.vec
-
-class PositionFactory():
-    def __init__(self):
-        try:
-            from libpychess import Position as c_Position
-            self.position: Position = c_Position
-        except ImportError:
-            self.position = Position
-
-    def get_position(self) -> Position:
-        return self.position
