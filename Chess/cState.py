@@ -24,9 +24,12 @@ class CBoard(Board):
         :type pieces: List[Piece]
         :rtype: ResultSet
         """
-        analysis = MoveAnalyser(pieces)
+        analysis = MoveAnalyser(pieces) \
+                        if not self._ep_square else \
+                        MoveAnalyser(pieces, self._ep_square)
         colour_to_analyse = pieces[0].colour
         c_result = analysis.PsuedolegalMoves(colour_to_analyse)
+        del(analysis)
 
         return ResultSet({
             k: Result(v) for k, v in c_result.items()

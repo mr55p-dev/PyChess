@@ -52,7 +52,8 @@ class PyBoard(Board):
         occupier = self.loc_map[position] if position in self.loc_map else None
         if not occupier:
             if passive_allowed: return MoveSignal.empty
-            elif capture_allowed: return MoveSignal.attacks
+            elif capture_allowed:
+                return MoveSignal.enpassant if self._ep_square == position else MoveSignal.attacks
         elif occupier.colour == piece.colour:
             if capture_allowed: return MoveSignal.blocked
         elif capture_allowed:
@@ -119,13 +120,16 @@ class PyBoard(Board):
                         # This will only ever be pawn attacks (to separate their passive
                         # capturing and non-capturing moves)
                         result[ResultKeys.attack].append(landed_on); break
+                    elif not pinned and allowed == MoveSignal.enpassant:
+                        result[ResultKeys.capture].append(landed_on); break
                     elif allowed == MoveSignal.checking_attack:
                         # Store a check if we are not looking for a pin
                         if pinned:
-                            result[ResultKeys.pin].append(pinned) 
+                            result[ResultKeys.pin].append(pinned)
                             break
-                        result[ResultKeys.capture].append(landed_on) 
+                        result[ResultKeys.capture].append(landed_on)
                         break
+
                     elif allowed == MoveSignal.blocked:
                         # Do not consider a piece defended if we are looking at a pin
                         if pinned: break

@@ -92,14 +92,14 @@ class Game():
 
         move_repr = matches.pop()
 
-        if move_repr[4] and move_repr[5]:
-            return self.__parse_castle('long')
-        elif move_repr[4]:
-            return self.__parse_castle('short')
+        if move_repr[4]:
+            if move_repr[5]:
+                return self.__parse_castle('long')
+            else:
+                return self.__parse_castle('short')
 
-        takes = False
-        if move_repr[2]:
-            takes = True
+        # if move_repr[2]:
+        #     takes = end
 
         if not move_repr[3]:
             self.log.error(f"Failed to parse {move_str}: no destination square provided")
@@ -107,9 +107,7 @@ class Game():
             return None
         end = Position(move_repr[3].upper())
 
-        if end in self.peek.loc_map:
-            takes = True
-
+        takes = end if end in self.peek.loc_map else False
         start = move_repr[1]
         if len(start) == 2:
             start = Position(start.upper())

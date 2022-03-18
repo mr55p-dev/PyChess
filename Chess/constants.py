@@ -48,7 +48,7 @@ class MoveSignal(BaseEnum):
     Defines the possible return types for Board.__py_allowed_move - these signal the category of move.
     Python reference implementation is identical to the implemetation by libpychess's MoveAnalyser."""
 
-    __slots__ = ('blocked', 'capture', 'empty', 'checking_attack', 'disallowed', 'attacks')
+    __slots__ = ('blocked', 'capture', 'empty', 'checking_attack', 'disallowed', 'attacks', 'enpassant')
 
     def __init__(self) -> None:
         blocked         = 0
@@ -57,6 +57,7 @@ class MoveSignal(BaseEnum):
         checking_attack = 3
         disallowed      = 4
         attacks         = 5
+        enpassant       = 6
 
 class WinState():
     """WinState enum

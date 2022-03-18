@@ -1,7 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple, Union
-from math import ceil
 
 from Chess.constants import WinState, BLACK, WHITE, ResultKeys
 from Chess.coordinate import Move
@@ -20,12 +19,11 @@ class Board(ABC):
     Subclasses must implement _psuedolegal_moves and override the __init__ method to include a
     Position parmeter, since i am too lazy to duplicate the logic in get_king_start et al.
     """
-
     def __init__(self,
                  starting_position: Tuple[List[Piece], List[Piece]] = None,
                  to_move: int = WHITE,
                  can_castle: str = "KQkq",
-                 en_passant_opts: str = "-",
+                 ep_allowed: str = "-",
                  half_turn: int = 0,
                  turn: int = 1,
                  ) -> None:
@@ -47,8 +45,8 @@ class Board(ABC):
         self.__win_state = WinState.cont
         self._evaluation = 0
 
-        # This is just while castling and en-passant is not implemented
         self._castle = self.__parse_castle(can_castle) # castle[4] : white kingside, queenside, black kingside, queenside
+        self._ep_square = self.Position(ep_allowed.upper()) if ep_allowed and ep_allowed != "-" else None
 
         # Generate all the important stuff
         self.calculate()
@@ -135,22 +133,21 @@ class Board(ABC):
             assert attacker
 
         opposing_moves = self._psuedolegal_moves(self.opposing)
+        king_square = self.piece_map[king]
         for piece in results.keys():
-            # If there is only one attacker, non-king pieces can only move on the path attacker - king
-            # If the piece is a king then fetch the king_moves from __filter_king_moves algorithm
+            # If there is only one attacker, non-king pieces can only move on the path attacker
             if piece == king:
                 continue
             if attacker:
                 # Get the path from the attacker to the king, filter moves to only that path.
-                path = self.piece_map[attacker].path_to(self.piece_map[king])
+                path = self.piece_map[attacker].path_to(king_square)
                 results[piece] = results[piece].filter_valid(lambda x: x in path)
 
             # Finally, if attackers <=1 resolve pins.
             piece_loc = self.piece_map[piece]
             if pin := opposing_moves.lookup_pin(piece_loc):
-                # Only valid moves for a pinned piece will be on the axis of the opposing piece
-                # and king.
-                path = self.piece_map[pin].path_to(self.piece_map[king])
+                # Only valid moves for a pinned piece will be on the axis of the opposing piece and king.
+                path = self.piece_map[pin].path_to(king_square)
                 results[piece] = results[piece].filter_valid(lambda x: x in path)
 
         return results
@@ -335,6 +332,20 @@ class Board(ABC):
 
         return valid
 
+    def check_enpassant(self, mov: Move) -> Move:
+        # Check if the move is an en=passant
+        if mov.end == self._ep_square:
+            # Just change the move to be a capture at the correct square
+            mov.takes = self.Position(mov.end.i + di, mov.end.j)
+            di = 1 if self.to_move == BLACK else -1
+
+        # Check if the piece will allow en-passant next turn
+        if mov.start.j - mov.end.j == 0 \
+        and abs(di:=(mov.end.i - mov.start.i)) == 2:
+            self._ep_square = self.Position(int(di/2), mov.end.j) # Save the square in the middle of the double move
+        else:
+            self._ep_square = None # Make sure the en-passant square is unset
+
     def move(self, mov: Move) -> 'Board':
         """Runs a move in the current state. Takes a `Move` object.
         Reupdates the state at the end of the call.
@@ -348,8 +359,14 @@ class Board(ABC):
             self.log.error(f"{mov.start} does not appear as a piece in loc_map")
             raise InvalidMoveError(f"{mov.start} does not appear as a piece in loc_map")
 
-        # Set the new position
+        # Identify the piece
         moving_piece = self.loc_map[mov.start]
+
+        # Check if en-passant is happening
+        if moving_piece.kind == "P":
+            mov = self.check_enpassant(mov)
+
+        # Update the piece with its new position
         self.__update_piece(moving_piece, new_position=mov.end)
 
         # Check if the move is a castle
@@ -377,8 +394,9 @@ class Board(ABC):
 
         # Remove captured pieces so they dont remain forever.
         if mov.takes:
-            captured = self.loc_map[mov.end]
+            captured = self.loc_map[mov.takes]
             self.__update_piece(captured, is_active=False)
+            # Reset the half move timer if the captured piece is a pawn
             if captured.kind == "P":
                 self._half_turn = 0
 

@@ -1,8 +1,7 @@
-from Chess.view import view_board_colour
-from Chess.game import Game
+from Chess.API import Chess
 
 if __name__ == "__main__":
-            
-    g = Game(view_board_colour)
-    g.play()
+    ch = Chess(use_acceleration=True)
+    new_board = ch.Board()
+
 
