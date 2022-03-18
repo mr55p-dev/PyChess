@@ -1,15 +1,19 @@
 import pytest
-# from Chess.cState import CBoard as Board
-from Chess.pState import PyBoard as Board
+from itertools import product
+from Chess.pState import PyBoard
+from Chess.cState import CBoard
 
 fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
 c5 = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
 Nf3 = "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
 
-def test_init():
-    board = Board()
-    assert board.to_fen() == fen
+boards = [PyBoard, CBoard]
+
+@pytest.mark.parametrize('board', boards)
+def test_init(board):
+    b = board()
+    assert b.to_fen() == fen
     
 fen_seq = [
     fen,
@@ -19,10 +23,10 @@ fen_seq = [
 ]
 
 # These tests still fail as half move clock and en-passant not working
-@pytest.mark.parametrize('fen', fen_seq)
-def test_construct(fen):
-    board = Board(fen)
-    assert board.to_fen() == fen
+@pytest.mark.parametrize('fen, board', product(fen_seq, boards))
+def test_construct(board, fen):
+    b = board(fen)
+    assert b.to_fen() == fen
 
 def test_calculate():
     ...

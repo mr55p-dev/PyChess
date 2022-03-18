@@ -29,7 +29,7 @@ def test_active():
     p = Piece(WHITE, Position("B7"), 'K', 7)
     assert p.is_active == True
     p.is_active = False
-    assert p.is_active == False
+    assert not p.is_active
 
 def test_subclass_projections():
     pos = Position("A1")
