@@ -28,7 +28,7 @@ class Piece(types.Piece):
             kind: str,
             max_distance: int = 7,
             projections: List[types.Vec] = all_projections,
-            is_active: bool = False
+            is_active: bool = True
         ) -> None:
         """__init__.
 

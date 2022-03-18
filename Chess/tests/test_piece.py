@@ -1,45 +1,53 @@
-from Chess.constants import PIECE_TYPES, WHITE, BLACK
-from Chess.coordinate import Position
-from Chess.pieces import Piece, King, Queen, Knight, Rook, Bishop, Pawn
+import pytest
+from Chess.API import Chess
 
+cc = Chess(use_acceleration=True)
+pc = Chess(use_acceleration=False)
+constructors = [cc, pc]
 
-def test_init():
-    p = Piece(WHITE, Position("A1"), 'K', 7)
+@pytest.mark.parametrize('m', constructors)
+def test_init(m: Chess):
+    p = m.Pieces.Piece(m.white, m.Position("A1"), 'K', 7, [], False)
 
-def test_eq():
-    p = Piece(WHITE, Position("A1"), 'K', 7)
-    r = Piece(WHITE, Position("A1"), 'K', 7)
+@pytest.mark.parametrize('m', constructors)
+def test_eq(m: Chess):
+    p = m.Pieces.Piece(m.white, m.Position("A1"), 'K', 7)
+    r = m.Pieces.Piece(m.white, m.Position("A1"), 'K', 7)
     assert p == r
 
-def test_neq():
-    p = Piece(WHITE, Position("A1"), 'K', 7)
-    r = Piece(BLACK, Position("A1"), 'K', 7)
-    s = Piece(BLACK, Position("B1"), 'K', 7)
-    t = Piece(BLACK, Position("B1"), 'N', 7)
-    u = Piece(BLACK, Position("B1"), 'N', 7)
+@pytest.mark.parametrize('m', constructors)
+def test_neq(m: Chess):
+    p = m.Pieces.Piece(m.white, m.Position("A1"), 'K')
+    r = m.Pieces.Piece(m.black, m.Position("A1"), 'K')
+    s = m.Pieces.Piece(m.black, m.Position("B1"), 'K')
+    t = m.Pieces.Piece(m.black, m.Position("B1"), 'N')
+    u = m.Pieces.Piece(m.black, m.Position("B2"), 'N')
     u.is_active = False
     assert p != r != s != t != u
 
-def test_hash():
-    p = Piece(WHITE, Position("B7"), 'K', 7)
+@pytest.mark.parametrize('m', constructors)
+def test_hash(m: Chess):
+    p = m.Pieces.Piece(m.white, m.Position("B7"), 'K', 7)
     # 111 001 1001011 1 1
     assert hash(p) == int(0b110001100101111)
 
-def test_active():
-    p = Piece(WHITE, Position("B7"), 'K', 7)
+@pytest.mark.parametrize('m', constructors)
+def test_active(m: Chess):
+    p = m.Pieces.Piece(m.white, m.Position("B7"), 'K', 7)
     assert p.is_active == True
     p.is_active = False
     assert not p.is_active
 
-def test_subclass_projections():
-    pos = Position("A1")
+@pytest.mark.parametrize('m', constructors)
+def test_subclass_projections(m: Chess):
+    pos = m.Position("A1")
 
-    k = King(WHITE, pos)
-    q = Queen(WHITE, pos)
-    r = Rook(WHITE, pos)
-    n = Knight(WHITE, pos)
-    b = Bishop(WHITE, pos)
-    p = Pawn(WHITE, pos)
+    k = m.Pieces.King(m.white, pos)
+    q = m.Pieces.Queen(m.white, pos)
+    r = m.Pieces.Rook(m.white, pos)
+    n = m.Pieces.Knight(m.white, pos)
+    b = m.Pieces.Bishop(m.white, pos)
+    p = m.Pieces.Pawn(m.white, pos)
 
     assert len(k.projections) == 8
     assert len(q.projections) == 8
