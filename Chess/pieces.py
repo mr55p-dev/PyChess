@@ -4,6 +4,17 @@ from Chess.coordinate import Vec
 from Chess.exceptions import InvalidPiece
 from Chess import types
 
+all_projections = [
+    Vec(1, 1),
+    Vec(1, 0),
+    Vec(1, -1),
+    Vec(0, 1),
+    Vec(0, -1),
+    Vec(-1, 1),
+    Vec(-1, 0),
+    Vec(-1, -1)
+]
+
 class Piece(types.Piece):
     """Piece
     Wrapper for a chess piece. This is the base class, and is subclassed and overloaded
@@ -16,6 +27,8 @@ class Piece(types.Piece):
             position: types.Position,
             kind: str,
             max_distance: int = 7,
+            projections: List[types.Vec] = all_projections,
+            is_active: bool = False
         ) -> None:
         """__init__.
 
@@ -38,8 +51,9 @@ class Piece(types.Piece):
         self._colour = colour
         self._position = position
         self._kind = kind
-        self._is_active = True
+        self._is_active = is_active
         self._max_distance = max_distance
+        self._projections = projections
 
     def __repr__(self) -> str:
         return f"<{self._kind} colour {self._colour} at {self._position}>"
@@ -86,11 +100,10 @@ class Piece(types.Piece):
     def is_active(self, state) -> None:
         self._is_active = state
 
-
     @property
     def projections(self) -> List[Vec]:
         """A list of the directions that the piece can move in."""
-        return [Vec(1,1)]
+        return self._projections
 
 
 class King(Piece):
@@ -100,16 +113,7 @@ class King(Piece):
     @property
     def projections(self):
         """The directions this piece can move in"""
-        return [
-            Vec(1, 1),
-            Vec(1, 0),
-            Vec(1, -1),
-            Vec(0, 1),
-            Vec(0, -1),
-            Vec(-1, 1),
-            Vec(-1, 0),
-            Vec(-1, -1)
-        ]
+        return all_projections
 
 
 class Queen(Piece):
@@ -119,16 +123,7 @@ class Queen(Piece):
     @property
     def projections(self):
         """The directions this piece can move in"""
-        return [
-            Vec(1, 1),
-            Vec(1, 0),
-            Vec(1, -1),
-            Vec(0, 1),
-            Vec(0, -1),
-            Vec(-1, 1),
-            Vec(-1, 0),
-            Vec(-1, -1)
-        ]
+        return all_projections
 
 class Rook(Piece):
     def __init__(self, colour: bool, position: types.Position) -> None:
